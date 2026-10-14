@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="it" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#00f3ff" />
+  <meta name="description" content="S.T.E.W.A.R.D. OS — Gestione Turni, Convocazioni e Calendari per Steward Professionisti" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="STEWARD OS" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="S.T.E.W.A.R.D. OS" />
+  <meta property="og:description" content="Sistema Operativo per Steward Professionisti" />
+  <meta property="og:type" content="website" />
+
+  <title>S.T.E.W.A.R.D. OS</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/static/style.css" />
+
+  <!-- FullCalendar v6 -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/it.global.min.js"></script>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-overlay" role="status" aria-label="Avvio sistema">
+  <div class="arc-reactor-btn" style="pointer-events:none;">
+    <div class="arc-ring"></div>
+    <div class="arc-ring"></div>
+    <div class="arc-ring"></div>
+    <div class="arc-core"><span class="arc-icon">⚡</span></div>
+  </div>
+  <div class="loading-text pulse">AVVIO S.T.E.W.A.R.D. OS...</div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- App Shell -->
+<div id="app" role="main">
+
+  <!-- Top Header -->
+  <header id="top-header" role="banner">
+    <div class="header-branding">
+      <div class="hud-title">S.T.E.W.A.R.D. OS
+        <span>SISTEMA TURNI &amp; CONVOCAZIONI</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-phone-sync" id="btn-phone-sync" aria-label="Collega Calendario al Telefono" title="Sincronizza Google Calendar e Telefono">
+        <span class="btn-sync-icon">🔗</span>
+        <span class="btn-sync-label">Collega al Telefono</span>
+      </button>
+      <time class="system-clock" id="clock" aria-label="Orario corrente">00:00:00</time>
+    </div>
+  </header>
+
+  <!-- Scrollable Content -->
+  <div id="main-content">
+
+    <!-- ════ TAB: CALENDARIO ════ -->
+    <section id="tab-calendar" class="tab-panel active" role="tabpanel" aria-labelledby="nav-calendar">
+
+      <!-- Arc Reactor + J.A.R.V.I.S. -->
+      <div id="arc-reactor-section">
+        <button
+          class="arc-reactor-btn"
+          id="arc-reactor-btn"
+          aria-label="Premi per attivare il riconoscimento vocale J.A.R.V.I.S."
+          title="Tocca per parlare con J.A.R.V.I.S."
+        >
+          <div class="arc-ring"></div>
+          <div class="arc-ring"></div>
+          <div class="arc-ring"></div>
+          <div class="arc-core" id="arc-core">
+            <span class="arc-icon">🎙️</span>
+          </div>
+        </button>
+        <div class="arc-status-text" id="arc-status-text">TOCCA PER PARLARE</div>
+        <div id="jarvis-bubble" role="status" aria-live="polite">
+          <span class="jarvis-label">J.A.R.V.I.S.</span>
+          <span id="jarvis-text">Sistema pronto. Come posso assisterti?</span>
+        </div>
+
+        <!-- Next Shift Card -->
+        <div id="next-shift-card" class="next-shift-card" role="region" aria-label="Prossimo turno">
+          <div class="card-header">
+            <span>📅</span>
+            <span class="card-header-label">PROSSIMO TURNO &amp; CONVOCAZIONE</span>
+          </div>
+          <div id="next-shift-content" class="no-events-msg">CARICAMENTO IN CORSO...</div>
+        </div>
+      </div>
+
+      <!-- Calendar Controls -->
+      <div class="calendar-controls">
+        <button class="view-toggle-btn active" id="btn-month-view" aria-pressed="true" aria-label="Vista mensile">
+          📆 MESE
+        </button>
+        <button class="view-toggle-btn" id="btn-list-view" aria-pressed="false" aria-label="Vista lista">
+          📋 LISTA
+        </button>
+      </div>
+
+      <!-- FullCalendar -->
+      <div id="calendar-container" role="grid" aria-label="Calendario eventi"></div>
+
+    </section>
+
+    <!-- ════ TAB: PROSSIMI TURNI ════ -->
+    <section id="tab-shifts" class="tab-panel" role="tabpanel" aria-labelledby="nav-shifts">
+      <div class="section-title">Prossimi Turni</div>
+      <div id="shifts-list" class="shifts-list">
+        <div class="empty-state">CARICAMENTO...</div>
+      </div>
+    </section>
+
+    <!-- ════ TAB: AVVISI ════ -->
+    <section id="tab-alerts" class="tab-panel" role="tabpanel" aria-labelledby="nav-alerts">
+      <div class="section-title">Avvisi &amp; Conflitti</div>
+
+      <div class="alerts-summary">
+        <div class="alert-stat-card">
+          <div class="alert-stat-number danger" id="alert-conflicts-count">0</div>
+          <div class="alert-stat-label">CONFLITTI DATA</div>
+        </div>
+        <div class="alert-stat-card">
+          <div class="alert-stat-number warning" id="alert-changes-count">0</div>
+          <div class="alert-stat-label">CAMBI ORARIO</div>
+        </div>
+      </div>
+
+      <div id="alerts-list">
+        <div class="empty-state">NESSUN AVVISO ATTIVO</div>
+      </div>
+    </section>
+
+    <!-- ════ TAB: AGGIORNA ════ -->
+    <section id="tab-sync" class="tab-panel" role="tabpanel" aria-labelledby="nav-sync">
+      <div class="section-title">Sincronizzazione Dati</div>
+
+      <div class="sync-section">
+        <div class="sync-status-card">
+          <div class="sync-status-icon">🛰️</div>
+          <div class="sync-status-info">
+            <div class="sync-status-title">ULTIMO AGGIORNAMENTO</div>
+            <div class="sync-status-desc" id="last-sync-time">Non disponibile</div>
+          </div>
+        </div>
+
+        <button class="btn-sync-main" id="btn-sync-main" aria-label="Avvia sincronizzazione calendari">
+          <span id="sync-icon">🔄</span>
+          <span id="sync-btn-text">AGGIORNA TUTTI I CALENDARI</span>
+        </button>
+
+        <div>
+          <div class="section-title">Log Operazioni</div>
+          <div class="sync-log" id="sync-log" role="log" aria-label="Log sincronizzazione">
+            <div class="sync-log-entry info">[ SISTEMA ] S.T.E.W.A.R.D. OS v1.0.0 online</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /main-content -->
+
+  <!-- Bottom Navigation -->
+  <nav id="bottom-nav" role="navigation" aria-label="Navigazione principale">
+    <button class="nav-tab active" id="nav-calendar" role="tab" aria-selected="true" aria-controls="tab-calendar" data-tab="calendar">
+      <span class="nav-icon">📆</span>
+      <span class="nav-label">Calendario</span>
+    </button>
+    <button class="nav-tab" id="nav-shifts" role="tab" aria-selected="false" aria-controls="tab-shifts" data-tab="shifts">
+      <span class="nav-icon">👷</span>
+      <span class="nav-label">Turni</span>
+    </button>
+    <button class="nav-tab" id="nav-alerts" role="tab" aria-selected="false" aria-controls="tab-alerts" data-tab="alerts">
+      <span class="nav-icon">⚠️</span>
+      <span class="nav-label">Avvisi</span>
+      <span class="nav-badge" id="alerts-badge" style="display:none;" aria-label="Numero avvisi">0</span>
+    </button>
+    <button class="nav-tab" id="nav-sync" role="tab" aria-selected="false" aria-controls="tab-sync" data-tab="sync">
+      <span class="nav-icon">🔄</span>
+      <span class="nav-label">Aggiorna</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- Bottom Sheet Overlay -->
+<div id="sheet-overlay" role="dialog" aria-modal="true" aria-label="Dettagli evento" aria-hidden="true">
+  <div id="bottom-sheet">
+    <div class="sheet-handle" aria-hidden="true"></div>
+
+    <div class="sheet-header">
+      <div class="sheet-title" id="sheet-event-title">Titolo Evento</div>
+      <div id="sheet-event-badge"></div>
+    </div>
+
+    <div class="sheet-body">
+      <div class="sheet-detail-row">
+        <div class="sheet-detail-icon">⏰</div>
+        <div class="sheet-detail-content">
+          <div class="sheet-detail-label">ORARIO EVENTO</div>
+          <div class="sheet-detail-value" id="sheet-event-time">—</div>
+        </div>
+      </div>
+
+      <div class="sheet-call-highlight">
+        <div class="sheet-detail-icon">🔔</div>
+        <div class="sheet-detail-content">
+          <div class="sheet-detail-label">CONVOCAZIONE (4H PRIMA)</div>
+          <div class="sheet-detail-value" id="sheet-call-time">—</div>
+        </div>
+      </div>
+
+      <div class="sheet-detail-row">
+        <div class="sheet-detail-icon">📍</div>
+        <div class="sheet-detail-content">
+          <div class="sheet-detail-label">SEDE</div>
+          <div class="sheet-detail-value" id="sheet-venue">—</div>
+        </div>
+      </div>
+
+      <div class="sheet-detail-row" id="sheet-notes-row" style="display:none;">
+        <div class="sheet-detail-icon">📝</div>
+        <div class="sheet-detail-content">
+          <div class="sheet-detail-label">NOTE</div>
+          <div class="sheet-detail-value" id="sheet-notes">—</div>
+        </div>
+      </div>
+
+      <div class="sheet-detail-row" id="sheet-conflict-row" style="display:none;">
+        <div class="sheet-detail-icon">⚠️</div>
+        <div class="sheet-detail-content">
+          <div class="sheet-detail-label">ATTENZIONE</div>
+          <div class="sheet-detail-value" style="color:var(--conflict-red);">CONFLITTO: altro evento nello stesso giorno!</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="sheet-btn gcal" id="btn-sheet-gcal" aria-label="Salva su Google Calendar" title="Aggiungi convocazione e turno a Google Calendar">
+        📅 Salva su Google Calendar
+      </button>
+      <div class="sheet-sub-actions">
+        <button class="sheet-btn confirm" id="btn-sheet-confirm" aria-label="Confermo lavoro io">
+          ✅ Lavoro Io
+        </button>
+        <button class="sheet-btn ignore" id="btn-sheet-ignore" aria-label="Riposo o ignora">
+          ❌ Riposo / Ignora
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone Sync Modal Overlay -->
+<div id="phone-sync-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-sync-title" aria-hidden="true">
+  <div class="modal-container">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-icon">🔗</span>
+        <div>
+          <h2 class="modal-title" id="modal-sync-title">COLLEGA AL TELEFONO</h2>
+          <div class="modal-subtitle">SINCRONIZZAZIONE GOOGLE CALENDAR &amp; SMARTPHONE</div>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="btn-close-phone-sync" aria-label="Chiudi finestra">&times;</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Metodo 1: Feed iCal (.ics) -->
+      <div class="sync-card">
+        <div class="sync-card-header">
+          <span class="sync-card-badge">METODO 1 &bull; DIRETTO SMARTPHONE</span>
+          <h3 class="sync-card-title">📲 Feed Calendario iCal (.ics)</h3>
+        </div>
+        <p class="sync-card-desc">
+          Sottoscrivi il feed ufficiale: tutti i turni con orario di convocazione (4h prima) appariranno automaticamente nell'app Calendario del tuo smartphone.
+        </p>
+
+        <div class="feed-url-box">
+          <input type="text" id="feed-url-input" readonly value="" aria-label="URL del feed iCal" />
+          <button class="btn-copy-feed" id="btn-copy-feed" aria-label="Copia link feed">
+            <span id="btn-copy-icon">📋</span> Copia Link
+          </button>
+        </div>
+
+        <div class="sync-instructions">
+          <div class="inst-item">
+            <span class="inst-badge">Google Cal Web / Android</span>
+            <span>Apri <a href="https://calendar.google.com" target="_blank" rel="noopener">calendar.google.com</a> &gt; <em>Altri calendari (+)</em> &gt; <em>"Da URL"</em> &gt; Incolla il link.</span>
+          </div>
+          <div class="inst-item">
+            <span class="inst-badge">iPhone / iOS</span>
+            <span>Impostazioni &gt; Calendario &gt; Account &gt; Aggiungi account &gt; Altro &gt; <em>Aggiungi calendario con sottoscrizione</em> &gt; Incolla.</span>
+          </div>
+        </div>
+
+        <a id="btn-webcal-direct" class="btn-direct-link" href="#" target="_blank" rel="noopener">
+          📅 Apri direttamente in Google Calendar Web
+        </a>
+      </div>
+
+      <!-- Metodo 2: Google Apps Script 24/7 -->
+      <div class="sync-card cloud-card">
+        <div class="sync-card-header">
+          <span class="sync-card-badge cloud">METODO 2 &bull; CLOUD GOOGLE 24/7</span>
+          <h3 class="sync-card-title">☁️ Aggiornamento Automatico ogni 6 Ore</h3>
+        </div>
+        <p class="sync-card-desc">
+          Usa <strong>google_calendar_sync.gs</strong> sui server gratuiti di Google: sincronizza il calendario 24/7 anche quando il tuo <strong>PC &egrave; spento</strong> e aggiorna automaticamente gli orari se una partita viene rinviata o spostata!
+        </p>
+
+        <div class="steps-list">
+          <div class="step-row">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              Apri <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a> e clicca su <strong>"Nuovo progetto"</strong>.
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              Cancella il codice predefinito, incolla il file <code>google_calendar_sync.gs</code> e clicca su <strong>Salva</strong> (💾).
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              Nel menu a tendina seleziona <code>installTrigger</code> e clicca <strong>Esegui</strong> (autorizza i permessi al tuo Google Calendar). <em>Fatto!</em>
+            </div>
+          </div>
+        </div>
+
+        <div class="script-actions">
+          <button class="btn-copy-script" id="btn-copy-script">
+            📋 Copia Codice Script
+          </button>
+          <a class="btn-download-script" href="/api/google-script" download="google_calendar_sync.gs">
+            ⬇️ Scarica File .gs
+          </a>
+        </div>
+      </div>
+
+      <!-- PWA Install Prompt Card -->
+      <div class="sync-card pwa-card" id="pwa-install-card">
+        <div class="sync-card-header">
+          <span class="sync-card-badge pwa">MOBILE PWA</span>
+          <h3 class="sync-card-title">📱 Aggiungi a Schermata Home</h3>
+        </div>
+        <p class="sync-card-desc">
+          Installa S.T.E.W.A.R.D. OS sullo smartphone come app nativa a schermo intero con avvio istantaneo.
+        </p>
+        <button class="btn-pwa-install" id="btn-pwa-install">
+          ⚡ Installa S.T.E.W.A.R.D. OS su Smartphone
+        </button>
+        <div class="ios-hint" id="ios-install-hint" style="display:none;">
+          💡 Su <strong>Safari iPhone</strong>: premi l'icona di condivisione (quadrato con freccia verso l'alto ⬆️) e seleziona <strong>"Aggiungi alla schermata Home"</strong>.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
