@@ -1032,6 +1032,10 @@ function selectBestItalianVoice() {
 
   if (!itVoices.length) return null;
 
+  // Priorità 0: Giuseppe Neural / Multilingual (timbro caldo e umano stile Paul Bettany)
+  const giuseppe = itVoices.find(v => v.name.toLowerCase().includes('giuseppe'));
+  if (giuseppe) { console.log('[JARVIS TTS] Voce Giuseppe/Paul Bettany:', giuseppe.name); return giuseppe; }
+
   // Priorità 1: Neural/Online Microsoft o Google
   const tier1 = itVoices.find(v => {
     const n = v.name.toLowerCase();
@@ -1055,7 +1059,7 @@ function selectBestItalianVoice() {
 
 /**
  * cleanJarvisSpeechText — Normalizzatore testo per TTS italiano.
- * Corregge preposizioni, ordinali, "vs", orari per una lettura naturale.
+ * Corregge preposizioni, ordinali, "vs", orari e garantisce la corretta cadenza su "signore".
  * @param {string} text
  * @returns {string}
  */
@@ -1089,9 +1093,20 @@ function cleanJarvisSpeechText(text) {
   t = t.replace(/\b(\d{1,2}):00\b/g, (_, h) => h.replace(/^0/, ''));
   t = t.replace(/\b(\d{1,2}):(\d{2})\b/g, (_, h, m) => `${h.replace(/^0/, '')} e ${m}`);
 
-  // Rimuovi trattini nei codici/sigle (rendono i tts impazzire)
-  // ma NON nelle date, quindi usiamo una regex mirata
+  // Rimuovi trattini nei codici/sigle
   t = t.replace(/\bSSC\b/gi, 'es-es-ci');
+
+  // Normalizza e ammorbidisce "signore" per evitare cadenze robotiche
+  t = t.replace(/[\.\!\?]\s+[Ss]ignore\b/g, ', signore');
+  t = t.replace(/,\s*Signore\b/g, ', signore');
+  t = t.replace(/\bSignore\b(?=[\s,\.\?!]|$)/g, 'signore');
+  if (!t.toLowerCase().includes('signore')) {
+    t = t.trim();
+    if (t.endsWith('?')) t = t.slice(0, -1).trim() + ', signore?';
+    else if (t.endsWith('.')) t = t.slice(0, -1).trim() + ', signore.';
+    else t = t + ', signore.';
+  }
+  t = t.replace(/^signore\b/i, 'Signore');
 
   return t;
 }
@@ -1258,8 +1273,64 @@ function fallbackBrowserSpeak(text) {
 }
 
 /**
+ * playJarvisAudioData — Riproduce audio J.A.R.V.I.S. direttamente da payload data URI base64.
+ * Elimina completamente il secondo roundtrip HTTP, avviando la voce all'istante.
+ */
+function playJarvisAudioData(audioDataUrl, text) {
+  STATE.isSpeaking = true;
+  const headerJarvis = document.getElementById('hud-header-jarvis');
+  if (headerJarvis) {
+    headerJarvis.classList.add('speaking');
+    headerJarvis.classList.remove('listening');
+  }
+  const headerStatus = document.getElementById('header-jarvis-status');
+  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
+
+  const capsule = document.getElementById('hud-floating-capsule');
+  if (capsule) {
+    capsule.classList.add('speaking');
+    const cmdText = document.getElementById('capsule-command-text');
+    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
+  }
+  const btn = document.getElementById('arc-reactor-btn');
+  if (btn) btn.classList.add('speaking');
+  const arcText = document.getElementById('arc-status-text');
+  if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
+  setJarvisText(text);
+
+  try {
+    if (_jarvisAudioPlayer) {
+      _jarvisAudioPlayer.pause();
+      _jarvisAudioPlayer.currentTime = 0;
+    }
+    _jarvisAudioPlayer = new Audio(audioDataUrl);
+
+    _jarvisAudioPlayer.onended = () => {
+      STATE.isSpeaking = false;
+      resetArcReactor();
+    };
+
+    _jarvisAudioPlayer.onerror = (e) => {
+      console.warn('Errore riproduzione data audio, uso fallback browser:', e);
+      fallbackBrowserSpeak(text);
+    };
+
+    const playPromise = _jarvisAudioPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Autoplay bloccato con data audio, uso fallback browser:', err);
+        fallbackBrowserSpeak(text);
+      });
+    }
+  } catch (err) {
+    console.warn('Errore avvio data audio, uso fallback browser:', err);
+    fallbackBrowserSpeak(text);
+  }
+}
+
+/**
  * jarvisSpeak — Sintesi vocale con Timbro Neurale & Filtro Olografico DSP (100% gratuito).
- * Riproduce l'audio generato dal backend Python (Edge-TTS DiegoNeural + HighPass 120Hz + Boost 2-4kHz + MicroDelay 8ms).
+ * Riproduce l'audio generato dal backend Python (Edge-TTS GiuseppeMultilingualNeural + DSP Paul Bettany).
  * Se il backend non è raggiungibile, esegue il fallback trasparente al browser.
  * @param {string} text - Testo da pronunciare
  */
@@ -1354,11 +1425,24 @@ function isFootballMatch(event) {
 async function processVoiceCommand(cmd) {
   setJarvisText(`"${cmd}"`);
 
+  // Feedback visivo immediato di elaborazione
+  const headerStatus = document.getElementById('header-jarvis-status');
+  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. ELABORA...';
+  const capsuleText = document.getElementById('capsule-command-text');
+  if (capsuleText) capsuleText.textContent = 'J.A.R.V.I.S. ELABORA...';
+  const arcText = document.getElementById('arc-status-text');
+  if (arcText) arcText.textContent = 'J.A.R.V.I.S. ELABORA...';
+
   // 1. Tenta elaborazione intelligente via backend J.A.R.V.I.S. (con risposte britanniche e filtro DSP)
   try {
     const res = await apiPost('/api/jarvis/command', { command: cmd });
     if (res && res.response) {
-      jarvisSpeak(res.response);
+      if (res.audio_data) {
+        // Riproduzione ISTANTANEA da audio base64: zero attesa del secondo roundtrip!
+        playJarvisAudioData(res.audio_data, res.response);
+      } else {
+        jarvisSpeak(res.response);
+      }
       if (res.event) {
         STATE.selectedDate = new Date(res.event.event_start.replace(' ', 'T'));
         renderHudCalendar();

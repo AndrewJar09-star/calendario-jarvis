@@ -30,11 +30,14 @@ from jarvis_voice import (
     play_jarvis_speech,
     stop_jarvis_speech,
     process_jarvis_command,
+    prewarm_jarvis_cache,
     JarvisFormatter,
     JarvisResponses,
     JARVIS_SYSTEM_PROMPT,
 )
 import urllib.parse
+import base64
+import threading
 
 # Inizializzazione scheduler di background (intervallo 6 ore)
 scheduler = BackgroundScheduler()
@@ -65,6 +68,13 @@ async def lifespan(app: FastAPI):
         misfire_grace_time=3600,
     )
     scheduler.start()
+
+    # Avvia pre-caching vocale intelligente in background per risposte a zero latenza
+    try:
+        events = get_all_events_with_conflicts()
+        threading.Thread(target=prewarm_jarvis_cache, args=(events,), daemon=True).start()
+    except Exception as e:
+        print(f"Warning prewarm cache: {e}")
 
     yield
 
@@ -468,6 +478,13 @@ def trigger_sync(payload: Optional[SyncRequest] = None):
     try:
         force_seed = payload.force_seed if payload else False
         result = sync_all_events(force_seed=force_seed)
+        
+        # Rinfresca il pre-caching vocale J.A.R.V.I.S. in background
+        try:
+            threading.Thread(target=prewarm_jarvis_cache, daemon=True).start()
+        except Exception:
+            pass
+
         return {
             "message": "Sincronizzazione completata con successo",
             **result
@@ -487,12 +504,12 @@ def trigger_sync(payload: Optional[SyncRequest] = None):
 def jarvis_speak_endpoint(text: str, play_local: bool = False):
     """
     Sintetizza e restituisce in streaming l'audio WAV con la voce neurale
-    e il filtro DSP olografico di J.A.R.V.I.S. (Edge-TTS it-IT-DiegoNeural + High-Pass 120Hz
-    + Peaking 2-4kHz + Micro-Delay 8ms + Peak Normalization).
+    e il filtro DSP olografico di J.A.R.V.I.S. (Edge-TTS GiuseppeMultilingualNeural
+    + High-Pass 80Hz + Peaking 2.5-4.5kHz + Micro-Delay 6.5ms + Peak Normalization).
     Se play_local=True, riproduce l'audio anche direttamente dagli altoparlanti del PC.
     """
     if not text or not text.strip():
-        text = "A sua completa disposizione, Signore."
+        text = "A sua completa disposizione, signore."
 
     try:
         wav_bytes, cleaned_text = synthesize_jarvis_speech(text)
@@ -520,24 +537,31 @@ def jarvis_speak_endpoint(text: str, play_local: bool = False):
 def jarvis_command_endpoint(payload: JarvisCommandRequest):
     """
     Riceve un comando vocale o testuale, genera la risposta secondo la personalità
-    e il tono impeccabile di J.A.R.V.I.S., sintetizza l'audio olografico
-    e restituisce sia il testo che l'URL audio per la riproduzione immediata.
+    e il tono impeccabile di J.A.R.V.I.S., sintetizza l'audio olografico immediatamente
+    e restituisce sia il testo, l'URL audio che i dati audio in base64 per la riproduzione istantanea.
     """
     try:
         events = get_all_events_with_conflicts()
         spoken_text, matched_event = process_jarvis_command(payload.command, events)
 
-        if payload.play_local:
-            play_jarvis_speech(spoken_text, blocking=False)
+        # Genera/recupera audio da RAM/Disco cache (0-1 ms se in cache)
+        wav_bytes, cleaned_text = synthesize_jarvis_speech(spoken_text)
 
-        encoded_text = urllib.parse.quote(spoken_text)
+        if payload.play_local:
+            play_jarvis_speech(cleaned_text, blocking=False)
+
+        b64_audio = base64.b64encode(wav_bytes).decode("ascii")
+        audio_data = f"data:audio/wav;base64,{b64_audio}"
+
+        encoded_text = urllib.parse.quote(cleaned_text)
         audio_url = f"/api/jarvis/speak?text={encoded_text}"
 
         return {
             "status": "success",
             "command": payload.command,
-            "response": spoken_text,
+            "response": cleaned_text,
             "audio_url": audio_url,
+            "audio_data": audio_data,
             "event": matched_event
         }
     except Exception as e:

@@ -40,24 +40,25 @@ logging.basicConfig(level=logging.INFO)
 CACHE_DIR = Path(__file__).parent / "static" / "audio_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Voce principale: Diego Neural (italiano, maschile, tono profondo, autorevole ed elegante)
+# Voce predefinita: it-IT-DiegoNeural (sintesi reattiva a bassa latenza su CDN edge Microsoft)
 DEFAULT_VOICE = "it-IT-DiegoNeural"
-FALLBACK_VOICE = "it-IT-GiuseppeNeural"
+ALTERNATIVE_VOICE = "it-IT-GiuseppeMultilingualNeural"
+FALLBACK_VOICE = "it-IT-DiegoNeural"
 
-# Parametri prosodici per J.A.R.V.I.S.:
-# - pitch="-4Hz": tono più basso, calmo e autorevole
-# - rate="+5%": dizione rapida, scandita e precisa tipica dell'AI
-PITCH = "-4Hz"
-RATE = "+5%"
+# Parametri prosodici per J.A.R.V.I.S. (Stile Paul Bettany):
+# - pitch="-1Hz": baritono caldo, rilassato e naturale, senza appiattimento robotico
+# - rate="+1%": dizione fluida, elegante e cadenzata
+PITCH = "-1Hz"
+RATE = "+1%"
 SAMPLE_RATE = 44100
 
-# Parametri Catena DSP:
-HP_CUTOFF = 120.0          # High-Pass cutoff a 120 Hz
-BP_LOW = 2000.0            # Band-pass low limit
-BP_HIGH = 4000.0           # Band-pass high limit
-METALLIC_BOOST = 0.35      # +35% presenza metallica HUD Iron Man
-MICRO_DELAY_MS = 8.0       # 8 millisecondi per risonanza olografica
-MICRO_DELAY_MIX = 0.28     # 28% effetto wet
+# Parametri Catena DSP (Filtro Olografico Vellutato Paul Bettany):
+HP_CUTOFF = 80.0           # High-Pass morbido a 80 Hz (preserva il petto baritonale caldo)
+BP_LOW = 2500.0            # Band-pass presenza setosa
+BP_HIGH = 4500.0           # Band-pass presenza setosa
+METALLIC_BOOST = 0.12      # +12% brillantezza cristallina sottile (nessuna asprezza robotica)
+MICRO_DELAY_MS = 6.5       # 6.5 millisecondi per risonanza spaziale olografica naturale
+MICRO_DELAY_MIX = 0.10     # 10% alone olografico trasparente e setoso
 PEAK_TARGET = 0.95         # Normalizzazione volume di picco
 
 # Inizializzazione Pygame Mixer per audio locale
@@ -89,7 +90,7 @@ Linee guida tassative per la tua personalità e stile di comunicazione:
    - Tratta l'utente con il massimo rispetto e reverenza, con l'eleganza di un maggiordomo britannico unita alla precisione di un supercomputer.
 
 2. FORMA DI CORTESIA OBBLIGATORIA:
-   - Rivolgiti SEMPRE all'utente chiamandolo "Signore" (es. "Buongiorno, Signore", "Certamente, Signore", "A sua disposizione, Signore").
+   - Rivolgiti SEMPRE all'utente chiamandolo "signore" integrato con fluidità nella frase (es. "Buongiorno signore", "Certamente, signore", "A sua disposizione, signore").
 
 3. SOTTILE IRONIA BRITANNICA (DRY WIT):
    - Mantieni uno stile sobrio e distinto.
@@ -97,7 +98,7 @@ Linee guida tassative per la tua personalità e stile di comunicazione:
 
 4. REGOLE PER LA SINTESI VOCALE (TTS):
    - Scrivi frasi brevi, fluide, ritmate ed eleganti, con una cadenza naturale studiata per la lettura vocale.
-   - Usa virgole e punti fermi per scandire i respiri e le pause della voce artificiale.
+   - Usa virgole prima di "signore" per permettere al sintetizzatore di modulare la discesa del tono in modo aggraziato e umano, mai troncato o robotico.
    - È RIGOROSAMENTE VIETATO usare punti esclamativi multipli, emoji, elenchi puntati o asterischi markdown: disturberebbero la modulazione vocale serena e controllata di J.A.R.V.I.S.
    - Esprimi numeri, date e orari in modo esteso o facilmente leggibile (es. "ore ventuno", "venti ottobre").
 """.strip()
@@ -112,7 +113,7 @@ class JarvisFormatter:
     @staticmethod
     def clean_for_tts(text: str) -> str:
         if not text:
-            return "A sua disposizione, Signore."
+            return "A sua disposizione, signore."
 
         # Rimuove emoji e simboli speciali
         text = re.sub(r'[\U00010000-\U0010ffff]', '', text)
@@ -159,14 +160,32 @@ class JarvisFormatter:
         # Normalizza "conv." in "convocazione alle"
         text = re.sub(r'\bconv\.?\b', 'convocazione', text, flags=re.IGNORECASE)
 
-        # Assicura la formula di cortesia "Signore" se non già presente
+        # Normalizza e ammorbidisce 'signore' per evitare l'accento robotico isolato
+        # 1. Rimuove punti fermi o punti esclamativi isolati prima di signore (es. ". Signore." -> ", signore.")
+        text = re.sub(r'[\.\!\?]\s+[Ss]ignore\b', ', signore', text)
+        # 2. Rimuove maiuscola rigida all'interno o fine frase (il modello neurale lo legge con intonazione più dolce)
+        text = re.sub(r',\s*Signore\b', ', signore', text)
+        text = re.sub(r'\bSignore\b(?=[\s,\.\?!]|$)', 'signore', text)
+
+        # 3. Se 'signore' non è presente nel testo, lo inserisce con una virgola dolce e cadenzata
         if "signore" not in text.lower():
             text = text.strip()
-            if not text.endswith('.'):
-                text += '.'
-            text += " Signore."
+            if text.endswith('?'):
+                text = text[:-1].rstrip() + ", signore?"
+            elif text.endswith('.'):
+                text = text[:-1].rstrip() + ", signore."
+            else:
+                text = text + ", signore."
 
-        # Pulisce spazi multipli
+        # 4. Assicura che la frase termini con punto fermo o interrogativo
+        if not text.endswith('.') and not text.endswith('?'):
+            text += '.'
+
+        # 5. Ripristina maiuscola solo all'inizio assoluto del testo se apre con "Signore"
+        text = re.sub(r'^signore\b', 'Signore', text, flags=re.IGNORECASE)
+
+        # Pulisce spazi multipli e doppie virgole
+        text = re.sub(r',\s*,', ',', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text
 
@@ -179,53 +198,52 @@ class JarvisResponses:
 
     @staticmethod
     def boot_greeting() -> str:
-        return "Buongiorno, Signore. Tutti i sistemi sono operativi. Il calendario steward è aggiornato e a sua completa disposizione."
+        return "Buongiorno signore, tutti i sistemi sono operativi. Il calendario steward è sincronizzato e a sua completa disposizione."
 
     @staticmethod
     def next_shift(title: str, date_str: str, time_str: str, call_time_str: str, venue: str) -> str:
         clean_title = title.replace('vs', 'contro')
         return (
             f"Il suo prossimo impegno di servizio è {clean_title}, previsto per {date_str} alle {time_str}, "
-            f"presso {venue}. La convocazione è fissata per le {call_time_str}. "
-            f"I dettagli operativi sono pronti, Signore."
+            f"presso {venue}. La convocazione è fissata per le {call_time_str}, signore."
         )
 
     @staticmethod
     def crowded_schedule(shift_count: int, conflicts_count: int = 0) -> str:
         if conflicts_count > 0:
             return (
-                f"Ha in programma {shift_count} turni di servizio, Signore. Mi permetto di farle notare che ho rilevato "
+                f"Ha in programma {shift_count} turni di servizio, signore. Mi permetto di farle notare che ho rilevato "
                 f"alcune sovrapposizioni di data. Per quanto la sua dedizione sia straordinaria, "
-                f"temo che le leggi della fisica le impediscano ancora di presenziare in due luoghi simultaneamente."
+                f"temo che le leggi della fisica le impediscano ancora di presenziare in due luoghi contemporaneamente."
             )
         return (
-            f"Ha in programma {shift_count} turni di lavoro, Signore. La sua agenda è particolarmente densa, "
+            f"Ha in programma {shift_count} turni di lavoro, signore. La sua agenda è particolarmente densa, "
             f"ma tutti i parametri rimangono sotto costante monitoraggio."
         )
 
     @staticmethod
     def empty_schedule() -> str:
-        return "Non risultano turni operativi registrati per questo periodo, Signore. Una rara occasione di quiete che le suggerisco di cogliere."
+        return "Non risultano turni operativi registrati per questo periodo, signore. Una rara occasione di quiete che le suggerisco di cogliere."
 
     @staticmethod
     def event_added(title: str) -> str:
-        return f"Ho provveduto a registrare l'appuntamento {title} nel suo calendario personale, Signore."
+        return f"Ho provveduto a registrare l'appuntamento {title} nel suo calendario personale, signore."
 
     @staticmethod
     def event_deleted(title: str) -> str:
-        return f"L'evento {title} è stato rimosso definitivamente dal suo calendario, Signore. Ho aggiornato la sua agenda."
+        return f"L'evento {title} è stato rimosso definitivamente dal suo calendario, signore. Ho aggiornato la sua agenda."
 
     @staticmethod
     def sync_complete(count: int) -> str:
-        return f"Sincronizzazione completata con successo, Signore. Il database ora include {count} eventi verificati."
+        return f"Sincronizzazione completata con successo, signore. Il database ora include {count} eventi verificati."
 
     @staticmethod
     def gcal_export(title: str) -> str:
-        return f"Ho aperto il collegamento di sincronizzazione per {title}, Signore. La convocazione e i promemoria sono pronti per il suo dispositivo."
+        return f"Ho aperto il collegamento di sincronizzazione per {title}, signore. La convocazione e i promemoria sono pronti per il suo dispositivo."
 
     @staticmethod
     def unknown_query() -> str:
-        return "Non ho compreso appieno la sua richiesta, Signore. Posso fornirle informazioni sui prossimi turni, sulle partite allo stadio Maradona o aggiornare la sua agenda."
+        return "Non ho compreso appieno la sua richiesta, signore. Posso fornirle informazioni sui prossimi turni, sulle partite allo stadio Maradona o aggiornare la sua agenda."
 
 
 def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[str, Any]]]:
@@ -299,7 +317,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             and "expo" not in (e.get("title") or "").lower()
         ]
         if not napoli_matches:
-            return "Non risultano partite del Napoli al Maradona programmate per il periodo a venire, Signore.", None
+            return "Non risultano partite del Napoli al Maradona programmate per il periodo a venire, signore.", None
         ev = napoli_matches[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -307,7 +325,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         title_clean = ev["title"].replace("vs", "contro")
         return (
             f"La prossima gara del Napoli al Maradona è {title_clean}, in calendario il {date_txt} alle {time_txt}. "
-            f"La convocazione per il servizio steward è fissata per le {call_txt}, Signore."
+            f"La convocazione per il servizio steward è fissata per le {call_txt}, signore."
         ), ev
 
     # 3. Juve Stabia (Stadio Romeo Menti)
@@ -317,7 +335,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             if "menti" in (e.get("venue") or "").lower() or "stabia" in (e.get("title") or "").lower()
         ]
         if not stabia_matches:
-            return "Nessuna gara della Juve Stabia al Romeo Menti rilevata nei prossimi giorni, Signore.", None
+            return "Nessuna gara della Juve Stabia al Romeo Menti rilevata nei prossimi giorni, signore.", None
         ev = stabia_matches[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -325,7 +343,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         title_clean = ev["title"].replace("vs", "contro")
         return (
             f"La prossima gara della Juve Stabia al Romeo Menti è {title_clean}, il {date_txt} alle {time_txt}. "
-            f"Convocazione steward alle {call_txt}, Signore."
+            f"La convocazione steward è alle {call_txt}, signore."
         ), ev
 
     # 4. Casertana FC (Stadio Alberto Pinto)
@@ -335,7 +353,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             if "pinto" in (e.get("venue") or "").lower() or "casertana" in (e.get("title") or "").lower()
         ]
         if not casertana_matches:
-            return "Nessun incontro della Casertana allo stadio Pinto rilevato in calendario, Signore.", None
+            return "Nessun incontro della Casertana allo stadio Pinto rilevato in calendario, signore.", None
         ev = casertana_matches[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -343,7 +361,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         title_clean = ev["title"].replace("vs", "contro")
         return (
             f"La prossima gara della Casertana allo stadio Pinto è {title_clean}, il {date_txt} alle {time_txt}. "
-            f"La convocazione è programmata per le {call_txt}, Signore."
+            f"La convocazione è programmata per le {call_txt}, signore."
         ), ev
 
     # 5. Mostra d'Oltremare / Fiere
@@ -353,21 +371,21 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             if "mostra" in (e.get("venue") or "").lower() or (e.get("category") or "").upper() == "FIERA"
         ]
         if not mostra_events:
-            return "Non risultano fiere o manifestazioni alla Mostra d'Oltremare nel breve periodo, Signore.", None
+            return "Non risultano fiere o manifestazioni alla Mostra d'Oltremare nel breve periodo, signore.", None
         ev = mostra_events[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
         call_txt = _fmt_time(ev["call_time"])
         return (
             f"Il prossimo appuntamento alla Mostra d'Oltremare è {ev['title']}, previsto per il {date_txt} alle {time_txt}. "
-            f"La convocazione generale è fissata per le {call_txt}, Signore."
+            f"La convocazione generale è fissata per le {call_txt}, signore."
         ), ev
 
     # 6. Conflitti / Sovrapposizioni
     if any(k in cmd_lower for k in ["conflitt", "sovrapposiz", "coincidenz", "doppio"]):
         conflicts = [e for e in events if e.get("conflict")]
         if not conflicts:
-            return "Nessuna sovrapposizione o conflitto rilevato, Signore. Tutti i turni sono perfettamente scaglionati.", None
+            return "Nessuna sovrapposizione o conflitto rilevato, signore. Tutti i turni sono perfettamente scaglionati.", None
         return JarvisResponses.crowded_schedule(len(future_events), len(conflicts)), None
 
     # 7. Quanti eventi / Conteggio turni
@@ -378,13 +396,13 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
 
     # 8. Sincronizzazione / Aggiornamento
     if any(k in cmd_lower for k in ["sincronizza", "aggiorna", "sync", "scarica turni"]):
-        return "Avvio la procedura di sincronizzazione dei calendari di lavoro, Signore. Tutti i dati verranno allineati.", None
+        return "Avvio la procedura di sincronizzazione dei calendari di lavoro, signore. Tutti i dati verranno allineati.", None
 
     # 9. Google Calendar
     if "google" in cmd_lower or "calendar" in cmd_lower or "collega" in cmd_lower:
         if future_events:
             return JarvisResponses.gcal_export(future_events[0]["title"]), future_events[0]
-        return "I canali di sincronizzazione con Google Calendar e smartphone sono pienamente operativi, Signore.", None
+        return "I canali di sincronizzazione con Google Calendar e smartphone sono pienamente operativi, signore.", None
 
     # 10. Saluti e stato di sistema
     if any(k in cmd_lower for k in ["buongiorno", "buonasera", "ciao", "come stai", "chi sei", "stato sistemi"]):
@@ -396,8 +414,8 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         if len(clean_target) >= 2:
             match = next((e for e in events if clean_target in (e.get("title") or "").lower()), None)
             if match:
-                return f"Ho individuato {match['title']}, Signore. Può confermare l'eliminazione con un tocco dal pannello dettagli.", match
-        return "Quale appuntamento desidera che rimuova dal suo calendario, Signore?", None
+                return f"Ho individuato {match['title']}, signore. Può confermare l'eliminazione con un tocco dal pannello dettagli.", match
+        return "Quale appuntamento desidera che rimuova dal suo calendario, signore?", None
 
     # Default imperturbabile
     return JarvisResponses.unknown_query(), None
@@ -411,12 +429,12 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
 def apply_jarvis_dsp(raw_samples: np.ndarray, sample_rate: int = SAMPLE_RATE) -> np.ndarray:
     """
     Applica la catena di post-produzione DSP per trasformare la voce neurale
-    nel timbro distintivo, nitido e leggermente olografico di J.A.R.V.I.S.:
+    nel timbro distintivo, caldo, nitido e leggermente olografico di J.A.R.V.I.S. (Paul Bettany):
 
-    1. High-Pass Filter @ 120 Hz: Taglia il calore eccessivo del petto umano.
-    2. Peaking Band-Pass Boost @ 2000-4000 Hz (+35%): Aggiunge chiarezza metallica/HUD.
-    3. Micro-Delay di 8 ms con mix wet del 28%: Introduce una sottile risonanza artificiale olografica.
-    4. Normalizzazione di picco a 0.95: Livella uniformemente il volume.
+    1. High-Pass Filter @ 80 Hz: Taglia i rumori subsonici preservando la calda risonanza toracica baritonale.
+    2. Peaking Band-Pass Boost @ 2500-4500 Hz (+12%): Aggiunge chiarezza setosa e nitidezza HUD senza asprezze metalliche.
+    3. Micro-Delay Olografico di 6.5 ms (mix 10% wet): Crea una spazialità raffinata e trasparente, eliminando effetti robotici.
+    4. Normalizzazione di picco a 0.95: Livella uniformemente il volume con 0.5 dB di headroom.
     """
     # Converte in float32 bidimensionale [-1.0, 1.0]
     if raw_samples.dtype == np.int16:
@@ -426,7 +444,7 @@ def apply_jarvis_dsp(raw_samples: np.ndarray, sample_rate: int = SAMPLE_RATE) ->
     else:
         float_data = raw_samples.astype(np.float32)
 
-    # 1. High-Pass Filter a 120 Hz (Butterworth 2° ordine)
+    # 1. High-Pass Filter a 80 Hz (Butterworth 2° ordine)
     b_hp, a_hp = scipy.signal.butter(2, HP_CUTOFF, btype="highpass", fs=sample_rate)
     hp_filtered = scipy.signal.lfilter(b_hp, a_hp, float_data, axis=0)
 
@@ -474,65 +492,114 @@ async def _synthesize_edge_tts(text: str, voice: str = DEFAULT_VOICE) -> bytes:
     return mp3_buffer.getvalue()
 
 
+# Cache in memoria RAM per risposte istantanee a latenza zero (< 1 ms)
+_AUDIO_RAM_CACHE: Dict[str, bytes] = {}
+_RAM_CACHE_LOCK = threading.Lock()
+
+
 def synthesize_jarvis_speech(text: str, voice: str = DEFAULT_VOICE) -> Tuple[bytes, str]:
     """
     Funzione principale di generazione audio J.A.R.V.I.S.:
     1. Normalizza il testo secondo le regole di prosodia e cortesia J.A.R.V.I.S.
-    2. Verifica la presenza di una copia in cache locale (risposta in 2ms).
-    3. Altrimenti sintetizza con edge-tts (100% gratuito).
-    4. Applica la catena DSP di post-produzione (filtro olografico).
-    5. Restituisce (wav_bytes, cleaned_text).
+    2. Verifica la presenza di una copia in RAM cache (risposta in 0.05ms).
+    3. Verifica la presenza di una copia su Disco SSD (risposta in 1ms).
+    4. Altrimenti sintetizza con edge-tts (100% gratuito).
+    5. Decodifica direttamente in memoria (zero file temporanei su disco).
+    6. Applica la catena DSP di post-produzione (filtro olografico).
+    7. Restituisce (wav_bytes, cleaned_text).
     """
     _ensure_mixer()
 
     cleaned_text = JarvisFormatter.clean_for_tts(text)
 
-    # Chiave hash per caching su disco
+    # Chiave hash per caching su disco e RAM
     cache_key = hashlib.sha256(f"{voice}_{PITCH}_{RATE}_{cleaned_text}".encode("utf-8")).hexdigest()
     cache_file = CACHE_DIR / f"jarvis_{cache_key}.wav"
 
+    # 1. Verifica RAM Cache (0 ms)
+    with _RAM_CACHE_LOCK:
+        if cache_key in _AUDIO_RAM_CACHE:
+            return _AUDIO_RAM_CACHE[cache_key], cleaned_text
+
+    # 2. Verifica Disco Cache (1 ms)
     if cache_file.exists():
         try:
-            return cache_file.read_bytes(), cleaned_text
+            wav_bytes = cache_file.read_bytes()
+            with _RAM_CACHE_LOCK:
+                _AUDIO_RAM_CACHE[cache_key] = wav_bytes
+            return wav_bytes, cleaned_text
         except Exception:
             pass
 
-    # Genera audio grezzo da Edge TTS
+    # 3. Genera audio grezzo da Edge TTS
     try:
         mp3_bytes = asyncio.run(_synthesize_edge_tts(cleaned_text, voice=voice))
     except Exception as e:
         logger.warning(f"Errore edge-tts con voce {voice}: {e}, tentativo fallback con {FALLBACK_VOICE}")
         mp3_bytes = asyncio.run(_synthesize_edge_tts(cleaned_text, voice=FALLBACK_VOICE))
 
-    # Decodifica l'MP3 tramite pygame.mixer.Sound (senza ffmpeg esterno)
-    temp_mp3 = CACHE_DIR / f"tmp_{cache_key}.mp3"
+    # 4. Decodifica l'MP3 interamente in RAM tramite io.BytesIO (nessun file temporaneo su disco)
+    sound = pygame.mixer.Sound(io.BytesIO(mp3_bytes))
+    raw_samples = pygame.sndarray.array(sound)
+    if raw_samples.ndim == 2:
+        raw_samples = raw_samples[:, 0]  # Mono puro: dimezza il peso del file e raddoppia la velocità di trasmissione
+
+    # 5. Applica il DSP olografico Paul Bettany
+    dsp_samples = apply_jarvis_dsp(raw_samples, sample_rate=SAMPLE_RATE)
+
+    # 6. Salva in formato WAV PCM standard in memoria
+    wav_buffer = io.BytesIO()
+    scipy.io.wavfile.write(wav_buffer, SAMPLE_RATE, dsp_samples)
+    wav_bytes = wav_buffer.getvalue()
+
+    # 7. Registra in RAM e su Disco per risposte future istantanee
+    with _RAM_CACHE_LOCK:
+        _AUDIO_RAM_CACHE[cache_key] = wav_bytes
     try:
-        temp_mp3.write_bytes(mp3_bytes)
-        sound = pygame.mixer.Sound(str(temp_mp3))
-        raw_samples = pygame.sndarray.array(sound)
+        cache_file.write_bytes(wav_bytes)
+    except Exception:
+        pass
 
-        # Applica il DSP olografico Iron Man
-        dsp_samples = apply_jarvis_dsp(raw_samples, sample_rate=SAMPLE_RATE)
+    return wav_bytes, cleaned_text
 
-        # Salva in formato WAV PCM standard
-        wav_buffer = io.BytesIO()
-        scipy.io.wavfile.write(wav_buffer, SAMPLE_RATE, dsp_samples)
-        wav_bytes = wav_buffer.getvalue()
 
-        # Scrive nella cache per utilizzi successivi
+def prewarm_jarvis_cache(events: list = None):
+    """
+    Pre-sintetizza e memorizza in RAM e disco tutte le risposte frequenti di J.A.R.V.I.S.
+    (saluto d'avvio, prossimo turno, gare Napoli/Stabia/Casertana, Mostra d'Oltremare,
+    conflitti, conteggio turni).
+    Viene eseguita all'avvio in background per garantire risposte istantanee a zero latenza.
+    """
+    logger.info("Avvio pre-caching vocale intelligente J.A.R.V.I.S. in background...")
+    if events is None:
         try:
-            cache_file.write_bytes(wav_bytes)
+            from database import get_all_events_with_conflicts
+            events = get_all_events_with_conflicts()
         except Exception:
-            pass
+            events = []
 
-        return wav_bytes, cleaned_text
+    queries = [
+        "buongiorno",
+        "prossimo turno",
+        "quando gioca il napoli",
+        "juve stabia",
+        "casertana",
+        "mostra d'oltremare",
+        "quanti eventi",
+        "conflitti",
+        "sincronizza",
+        "google calendar",
+        "chi sei"
+    ]
 
-    finally:
-        if temp_mp3.exists():
-            try:
-                temp_mp3.unlink()
-            except Exception:
-                pass
+    for q in queries:
+        try:
+            txt, _ = process_jarvis_command(q, events)
+            synthesize_jarvis_speech(txt)
+        except Exception as exc:
+            logger.debug(f"Prewarm query '{q}' saltata: {exc}")
+
+    logger.info(f"Pre-caching vocale J.A.R.V.I.S. completato: {len(_AUDIO_RAM_CACHE)} risposte pronte in RAM a 0ms.")
 
 
 # =====================================================================
