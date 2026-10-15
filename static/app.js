@@ -101,6 +101,16 @@ async function apiPost(path, body = {}) {
   return resp.json();
 }
 
+async function apiDelete(path) {
+  const resp = await fetch(path, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+
 // ─── Toast ──────────────────────────────────────────────────────
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
@@ -151,32 +161,49 @@ function classifyEventCategory(ev) {
   const title = (ev.title || '').toLowerCase();
   const venue = (ev.venue || '').toLowerCase();
 
-  // 1. SSC Napoli (Stadio Diego Armando Maradona)
-  if (title.includes('napoli') || venue.includes('maradona') || cat === 'NAPOLI') {
-    return 'NAPOLI';
-  }
-  // 2. Juve Stabia (Stadio Romeo Menti)
-  if (title.includes('stabia') || venue.includes('menti') || cat === 'STABIA') {
-    return 'STABIA';
-  }
-  // 3. Casertana FC (Stadio Alberto Pinto)
-  if (title.includes('casertana') || venue.includes('pinto') || cat === 'CASERTANA') {
-    return 'CASERTANA';
-  }
-  // 4. Mostra d'Oltremare (Fiere ed Eventi)
-  if (cat === 'FIERA' || cat === 'MOSTRA' || venue.includes('mostra') ||
-      title.includes('mostra') || title.includes('fiera') || title.includes('oltremare') ||
-      title.includes('tutto sposi') || title.includes('archeo') || title.includes('comicon') ||
-      title.includes('creattiva')) {
+  // 1. MOSTRA D'OLTREMARE (Fiere, Concorsi, Saloni, Spettacoli)
+  // PRIORITÀ ASSOLUTA: impedisce che fiere/eventi come "LTS EXPO NAPOLI" siano scambiati
+  // per partite di calcio solo perché menzionano la città "Napoli" nel loro titolo!
+  const isMostraVenue = venue.includes('mostra') || venue.includes('oltremare') ||
+                        venue.includes('padiglioni') || venue.includes('teatro mediterraneo');
+  const isFieraCat = cat === 'FIERA' || cat === 'MOSTRA';
+  const isFieraKeyword = title.includes('fiera') || title.includes('expo') || title.includes('salone') ||
+                         title.includes('concorso') || title.includes('convegno') || title.includes('congresso') ||
+                         title.includes('comicon') || title.includes('tutto sposi') || title.includes('pharmexpo') ||
+                         title.includes('aestetica') || title.includes('orientasud') || title.includes('creattiva') ||
+                         title.includes('esame') || title.includes('chantant');
+
+  if (isMostraVenue || isFieraCat || (isFieraKeyword && !venue.includes('maradona') && !venue.includes('menti') && !venue.includes('pinto'))) {
     return 'MOSTRA';
   }
+
+  // 2. SSC NAPOLI (Partite di Calcio allo Stadio Diego Armando Maradona)
+  const isMaradonaVenue = venue.includes('maradona') || venue.includes('san paolo');
+  const isNapoliMatch = title.includes('napoli') && (
+    title.includes('vs') || title.includes('contro') || title.includes(' - ') ||
+    cat === 'CALCIO' || isMaradonaVenue
+  );
+  if (isMaradonaVenue || isNapoliMatch || cat === 'NAPOLI') {
+    return 'NAPOLI';
+  }
+
+  // 3. JUVE STABIA (Stadio Romeo Menti)
+  if (venue.includes('menti') || title.includes('stabia') || cat === 'STABIA') {
+    return 'STABIA';
+  }
+
+  // 4. CASERTANA FC (Stadio Alberto Pinto)
+  if (venue.includes('pinto') || title.includes('casertana') || cat === 'CASERTANA') {
+    return 'CASERTANA';
+  }
+
   // Fallback squadre per categoria generica CALCIO
   if (cat === 'CALCIO' || cat === 'FOOTBALL') {
-    if (title.includes('napoli')) return 'NAPOLI';
     if (title.includes('stabia')) return 'STABIA';
     if (title.includes('casertana')) return 'CASERTANA';
     return 'NAPOLI';
   }
+
   // 5. Eventi Aggiunti / Manuali / Altro
   return 'CUSTOM';
 }
@@ -371,15 +398,34 @@ function renderHudWeekView() {
 
   const shortDayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
-  // 1. Intestazioni 7 Colonne
+  // 1. Intestazioni 7 Colonne con Badge Turni Integrati
   headersEl.innerHTML = weekDays.map((d, idx) => {
     const dNum = d.getDate();
     const dName = shortDayNames[idx];
     const isSelected = isSameDay(d, STATE.selectedDate);
     const activeClass = isSelected ? ' active-day-header' : '';
     const dateStr = formatYMD(d);
-    return `<div class="week-day-col-header${activeClass}" data-date="${dateStr}" role="button" tabindex="0">
-      <span>${dNum} ${dName}</span>
+
+    // Eventi di questa giornata per mostrare pill riassuntiva in testata
+    const dayEvs = STATE.events.filter(ev => {
+      if (!ev.event_start.startsWith(dateStr)) return false;
+      return STATE.activeCategories.has(classifyEventCategory(ev));
+    });
+
+    const badgesHtml = dayEvs.map(ev => {
+      const style = getHudEventStyle(ev);
+      const tStr = formatTime(ev.event_start);
+      let short = ev.title
+        .replace(/^Napoli vs /i, 'vs ')
+        .replace(/^Juve Stabia vs /i, 'vs ')
+        .replace(/^Casertana vs /i, 'vs ');
+      if (short.length > 17) short = short.substring(0, 15) + '…';
+      return `<div class="col-shift-pill ${style.class}" title="${ev.title} (Inizio: ${tStr})">${style.glyph} ${tStr} ${short}</div>`;
+    }).join('');
+
+    return `<div class="week-day-col-header${activeClass}" data-date="${dateStr}" role="button" tabindex="0" title="Visualizza turni del ${dNum} ${dName}">
+      <div class="col-header-date-line">${dNum} ${dName}</div>
+      <div class="col-header-badges">${badgesHtml}</div>
     </div>`;
   }).join('');
 
@@ -389,6 +435,7 @@ function renderHudWeekView() {
       if (dateStr) {
         STATE.selectedDate = new Date(dateStr + 'T09:30:00');
         renderHudCalendar();
+        setTimeout(() => scrollToEventOrDay(dateStr), 60);
       }
     });
   });
@@ -469,7 +516,10 @@ function renderHudWeekView() {
       const startTimeFormatted = formatTime(ev.event_start);
       const endDt = new Date(new Date(ev.event_start.replace(' ', 'T')).getTime() + durationHours * 3600 * 1000);
       const endTimeFormatted = formatTime(endDt.toISOString());
-      const subText = ev.notes || ev.venue || 'Sub-text';
+      
+      const convText = ev.call_time ? `🚨 Conv. ${formatTime(ev.call_time)}` : '';
+      const venueText = ev.venue || 'Sede';
+      const subText = convText ? `${convText} • ${venueText}` : (ev.notes || venueText);
 
       return `
         <div class="hud-event-card ${style.class}" style="top: ${top}px; height: ${height}px;" data-event-id="${ev.id}" role="button" tabindex="0" title="${ev.title}">
@@ -493,6 +543,49 @@ function renderHudWeekView() {
       if (ev) openBottomSheet(ev);
     });
   });
+
+  // Auto-scroll automatico al turno della giornata selezionata (o al primo turno visibile)
+  setTimeout(() => scrollToEventOrDay(formatYMD(STATE.selectedDate)), 120);
+}
+
+// ─── Auto-Scroll Helper per Scroller Griglia ───────────────────────
+function scrollToEventOrDay(targetYMD) {
+  const scroller = document.getElementById('week-grid-scroller');
+  if (!scroller) return;
+
+  const dayEvs = STATE.events.filter(ev => {
+    if (!ev.event_start.startsWith(targetYMD)) return false;
+    return STATE.activeCategories.has(classifyEventCategory(ev));
+  });
+
+  if (dayEvs.length > 0) {
+    const firstEv = dayEvs[0];
+    const timeStr = (firstEv.call_time || firstEv.event_start).split(' ')[1] || '09:00:00';
+    const [h, m] = timeStr.split(':').map(Number);
+    const targetTop = Math.max(0, ((h - 8) + m / 60) * 60 - 80);
+    scroller.scrollTo({ top: targetTop, behavior: 'smooth' });
+  } else {
+    // Se non ci sono eventi sul giorno selezionato, cerca il primo turno della settimana
+    const monday = getMonday(STATE.selectedDate);
+    let weekEarliestTop = 9999;
+    for (let i = 0; i < 7; i++) {
+      const wd = new Date(monday);
+      wd.setDate(monday.getDate() + i);
+      const wYMD = formatYMD(wd);
+      const evs = STATE.events.filter(e => e.event_start.startsWith(wYMD) && STATE.activeCategories.has(classifyEventCategory(e)));
+      for (const e of evs) {
+        const t = (e.call_time || e.event_start).split(' ')[1] || '09:00:00';
+        const [eh, em] = t.split(':').map(Number);
+        const et = Math.max(0, ((eh - 8) + em / 60) * 60 - 80);
+        if (et < weekEarliestTop) weekEarliestTop = et;
+      }
+    }
+    if (weekEarliestTop < 9999) {
+      scroller.scrollTo({ top: weekEarliestTop, behavior: 'smooth' });
+    } else {
+      scroller.scrollTo({ top: 40, behavior: 'smooth' });
+    }
+  }
 }
 
 // ─── Day View Component ─────────────────────────────────────────
@@ -794,6 +887,14 @@ function openBottomSheet(ev) {
   const conflictRow = document.getElementById('sheet-conflict-row');
   conflictRow.style.display = ev.conflict ? 'flex' : 'none';
 
+  // Configurazione pulsante eliminazione per eventi personali / aggiunti
+  const isCustom = (classifyEventCategory(ev) === 'CUSTOM') || ((ev.category || '').toUpperCase() === 'CUSTOM');
+  const deleteBtn = document.getElementById('btn-sheet-delete');
+  if (deleteBtn) {
+    deleteBtn.style.display = 'flex';
+    deleteBtn.innerHTML = isCustom ? '🗑️ Elimina Evento Personale' : '🗑️ Elimina Evento';
+  }
+
   const overlay = document.getElementById('sheet-overlay');
   const sheet = document.getElementById('bottom-sheet');
   overlay.classList.add('open');
@@ -823,6 +924,27 @@ async function confirmEvent(status) {
     await loadEvents();
   } catch (err) {
     showToast('Errore aggiornamento stato', 'error');
+  }
+}
+
+async function deleteCurrentEvent() {
+  if (!STATE.selectedEvent) return;
+  const ev = STATE.selectedEvent;
+  const isCustom = (classifyEventCategory(ev) === 'CUSTOM') || ((ev.category || '').toUpperCase() === 'CUSTOM');
+  const confirmMsg = isCustom
+    ? `Vuoi eliminare definitivamente l'evento personale "${ev.title}"?`
+    : `Vuoi eliminare definitivamente "${ev.title}" dal calendario?`;
+
+  if (!window.confirm(confirmMsg)) return;
+
+  try {
+    await apiDelete(`/api/events/${ev.id}`);
+    closeBottomSheet();
+    showToast(`Evento "${ev.title}" eliminato con successo!`, 'success');
+    await loadEvents();
+  } catch (err) {
+    console.error('Errore durante l\'eliminazione:', err);
+    showToast(`Errore durante l'eliminazione: ${err.message}`, 'error');
   }
 }
 
@@ -1185,7 +1307,8 @@ function isFootballMatch(event) {
   const venue  = (event.venue || '').toLowerCase();
   const cat    = (event.category || '').toUpperCase();
 
-  // Esclusione esplicita: fieristici/generici con "Napoli" nel nome
+  // Esclusione esplicita: Mostra d'Oltremare e fiere/generici
+  if (venue.includes('mostra') || venue.includes('oltremare') || cat === 'FIERA') return false;
   const excludeKeywords = ['EXPO NAPOLI', 'COMUNE DI', 'FIERA DI', 'SALONE', 'CONGRESSO', 'CONFERENZA'];
   if (excludeKeywords.some(kw => title.includes(kw))) return false;
 
@@ -1332,6 +1455,30 @@ function processVoiceCommand(cmd) {
     const future = STATE.events.filter(e => isFuture(e.event_start));
     jarvisSpeak(`Hai ${future.length} turni futuri in programma su un totale di ${STATE.events.length} eventi nel database.`);
     return;
+  }
+
+  // ── Elimina Evento / Appuntamento ──
+  if (cmd.includes('elimina') || cmd.includes('cancella') || cmd.includes('rimuovi')) {
+    const searchTarget = cmd
+      .replace(/elimina|cancella|rimuovi|evento|appuntamento|l'evento|il turno|turno/gi, '')
+      .trim().toLowerCase();
+
+    if (searchTarget.length >= 2) {
+      // Cerca prima tra gli eventi personali/aggiunti
+      let match = STATE.events.find(e =>
+        classifyEventCategory(e) === 'CUSTOM' &&
+        e.title.toLowerCase().includes(searchTarget)
+      );
+      if (!match) {
+        match = STATE.events.find(e => e.title.toLowerCase().includes(searchTarget));
+      }
+
+      if (match) {
+        openBottomSheet(match);
+        jarvisSpeak(`Ho aperto ${match.title}. Tocca 'Elimina Evento' per confermare la cancellazione.`);
+        return;
+      }
+    }
   }
 
   // ── Default ──
@@ -1710,6 +1857,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sheet action buttons
   document.getElementById('btn-sheet-confirm')?.addEventListener('click', () => confirmEvent('Lavoro io'));
   document.getElementById('btn-sheet-ignore')?.addEventListener('click', () => confirmEvent('Riposo'));
+  document.getElementById('btn-sheet-delete')?.addEventListener('click', deleteCurrentEvent);
   document.getElementById('btn-sheet-gcal')?.addEventListener('click', () => {
     if (!STATE.selectedEvent) return;
     const gcalUrl = generateGoogleCalendarUrl(STATE.selectedEvent);

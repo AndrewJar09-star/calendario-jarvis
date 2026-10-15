@@ -160,6 +160,41 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "event_start": "2027-02-14 15:00:00",
             "notes": "Serie A - Derby d'Italia al Maradona",
         },
+        {
+            "title": "Napoli vs Bologna",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-11-01 18:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Feyenoord",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-11-04 21:00:00",
+            "notes": "Champions League – Notte europea allo Stadio Maradona",
+        },
+        {
+            "title": "Napoli vs Empoli",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-11-29 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Verona",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-01-17 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Como",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-02-28 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
 
         # --- STADIO ROMEO MENTI (SS Juve Stabia) ---
         {

@@ -21,6 +21,8 @@ from database import (
     check_conflicts_and_updates,
     get_db_connection,
     parse_datetime,
+    delete_event,
+    get_event_by_id,
 )
 from scraper import sync_all_events
 
@@ -375,6 +377,40 @@ def change_event_status(event_id: int, payload: StatusUpdateRequest):
         "message": f"Stato aggiornato a '{valid_status}'",
         "event": updated
     }
+
+
+@app.delete("/api/events/{event_id}")
+def remove_event(event_id: int):
+    """
+    Elimina un evento dal database tramite il suo ID.
+    Consente agli steward di rimuovere appuntamenti ed eventi personali/aggiunti.
+    """
+    existing = get_event_by_id(event_id)
+    if not existing:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Evento con ID {event_id} non trovato"
+        )
+
+    deleted = delete_event(event_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Impossibile eliminare l'evento {event_id}"
+        )
+
+    return {
+        "message": f"Evento '{existing.get('title')}' eliminato con successo",
+        "id": event_id,
+        "deleted_event": existing
+    }
+
+
+@app.post("/api/events/{event_id}/delete")
+def remove_event_post(event_id: int):
+    """Alias POST per eliminazione evento."""
+    return remove_event(event_id)
+
 
 
 @app.get("/api/alerts")

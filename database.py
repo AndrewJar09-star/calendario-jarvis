@@ -378,3 +378,28 @@ def update_event_status(event_id: int, status: str) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
     finally:
         conn.close()
+
+
+def get_event_by_id(event_id: int) -> Optional[Dict[str, Any]]:
+    """Recupera un singolo evento per ID."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def delete_event(event_id: int) -> bool:
+    """Elimina un evento dal database tramite il suo ID. Ritorna True se eliminato, False altrimenti."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM events WHERE id = ?", (event_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
+
