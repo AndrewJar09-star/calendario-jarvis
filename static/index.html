@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#00f3ff" />
+  <meta name="theme-color" content="#060B14" />
   <meta name="description" content="S.T.E.W.A.R.D. OS — Gestione Turni, Convocazioni e Calendari per Steward Professionisti" />
 
   <!-- PWA -->
@@ -16,8 +16,10 @@
   <meta name="mobile-web-app-capable" content="yes" />
 
   <!-- Icons -->
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=2" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png?v=2" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-192.png?v=2" />
+  <link rel="shortcut icon" href="/static/favicon.ico?v=2" />
 
   <!-- Open Graph -->
   <meta property="og:title" content="S.T.E.W.A.R.D. OS" />
@@ -25,6 +27,11 @@
   <meta property="og:type" content="website" />
 
   <title>S.T.E.W.A.R.D. OS</title>
+
+  <!-- Google Fonts: Neo-Swiss Stack -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
   <link rel="stylesheet" href="/static/style.css" />
@@ -41,7 +48,9 @@
     <div class="arc-ring"></div>
     <div class="arc-ring"></div>
     <div class="arc-ring"></div>
-    <div class="arc-core"><span class="arc-icon">⚡</span></div>
+    <div class="arc-core">
+      <img src="/static/icons/jarvis-reactor.jpg" alt="J.A.R.V.I.S." class="arc-reactor-img" />
+    </div>
   </div>
   <div class="loading-text pulse">AVVIO S.T.E.W.A.R.D. OS...</div>
 </div>
@@ -52,17 +61,59 @@
 <!-- App Shell -->
 <div id="app" role="main">
 
-  <!-- Top Header -->
-  <header id="top-header" role="banner">
-    <div class="header-branding">
-      <div class="hud-title">S.T.E.W.A.R.D. OS
-        <span>SISTEMA TURNI &amp; CONVOCAZIONI</span>
+  <!-- Top Header HUD -->
+  <header id="top-header" role="banner" class="hud-top-bar">
+    <div class="header-left-hud">
+      <div class="hud-logo-title">
+        <span class="hud-logo-brand">STEWARD</span>
+        <span class="hud-slash">//</span>
+        <span class="hud-month-label" id="hud-month-label">OTTOBRE 2026</span>
+      </div>
+      <div class="hud-nav-capsule">
+        <button class="hud-capsule-arrow" id="hud-nav-prev" aria-label="Periodo precedente" title="Precedente">&lt;</button>
+        <button class="hud-capsule-arrow" id="hud-nav-next" aria-label="Periodo successivo" title="Successivo">&gt;</button>
+      </div>
+      <button class="hud-today-btn" id="hud-btn-today" aria-label="Vai a Oggi">Oggi</button>
+    </div>
+
+    <!-- J.A.R.V.I.S. Core Capsule in Top Header (Sempre visibile, mai coperto) -->
+    <div class="hud-header-jarvis" id="hud-header-jarvis">
+      <button
+        class="header-reactor-btn"
+        id="header-reactor-btn"
+        aria-label="Attiva riconoscimento vocale J.A.R.V.I.S."
+        title="Tocca per parlare con J.A.R.V.I.S."
+      >
+        <div class="header-reactor-ring"></div>
+        <div class="header-reactor-core">
+          <img src="/static/icons/jarvis-reactor.png?v=2" alt="J.A.R.V.I.S." class="header-reactor-img" />
+        </div>
+      </button>
+
+      <div class="header-jarvis-text-wrap" id="header-jarvis-text-wrap" role="button" tabindex="0" title="Tocca per attivare la voce J.A.R.V.I.S.">
+        <span class="header-jarvis-name">J.A.R.V.I.S.</span>
+        <span class="header-jarvis-sep">//</span>
+        <span class="header-jarvis-status" id="header-jarvis-status">TOCCA PER PARLARE</span>
+      </div>
+      <div class="header-speech-bubble" id="header-speech-bubble" style="display:none;">
+        <span id="header-speech-text">Pronto.</span>
       </div>
     </div>
-    <div class="header-actions">
-      <button class="btn-phone-sync" id="btn-phone-sync" aria-label="Collega Calendario al Telefono" title="Sincronizza Google Calendar e Telefono">
-        <span class="btn-sync-icon">🔗</span>
-        <span class="btn-sync-label">Collega al Telefono</span>
+
+    <div class="header-right-hud">
+      <div class="hud-view-switcher" role="radiogroup" aria-label="Seleziona visualizzazione">
+        <button class="hud-view-pill" id="view-pill-day" data-view="day" role="radio" aria-checked="false">Giorno</button>
+        <button class="hud-view-pill active" id="view-pill-week" data-view="week" role="radio" aria-checked="true">Settimana</button>
+        <button class="hud-view-pill" id="view-pill-month" data-view="month" role="radio" aria-checked="false">Mese</button>
+      </div>
+      <button class="hud-square-btn" id="hud-btn-search" aria-label="Cerca eventi o partite" title="Cerca eventi">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </button>
+      <button class="hud-square-btn" id="hud-btn-settings" aria-label="Impostazioni &amp; Sincronizzazione" title="Impostazioni &amp; Connessione Telefono">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+      <button class="btn-phone-sync-compact" id="btn-phone-sync" aria-label="Sincronizza Telefono" title="Collega Google Calendar &amp; Telefono">
+        <span>🔗</span>
       </button>
       <time class="system-clock" id="clock" aria-label="Orario corrente">00:00:00</time>
     </div>
@@ -71,52 +122,174 @@
   <!-- Scrollable Content -->
   <div id="main-content">
 
-    <!-- ════ TAB: CALENDARIO ════ -->
+    <!-- ════ TAB: CALENDARIO (HUD FUTURISTICO) ════ -->
     <section id="tab-calendar" class="tab-panel active" role="tabpanel" aria-labelledby="nav-calendar">
 
-      <!-- Arc Reactor + J.A.R.V.I.S. -->
-      <div id="arc-reactor-section">
-        <button
-          class="arc-reactor-btn"
-          id="arc-reactor-btn"
-          aria-label="Premi per attivare il riconoscimento vocale J.A.R.V.I.S."
-          title="Tocca per parlare con J.A.R.V.I.S."
-        >
-          <div class="arc-ring"></div>
-          <div class="arc-ring"></div>
-          <div class="arc-ring"></div>
-          <div class="arc-core" id="arc-core">
-            <span class="arc-icon">🎙️</span>
+      <div class="hud-calendar-workspace">
+        <!-- Sidebar SX (250px): Mini Mese + Filtro Calendari -->
+        <aside class="hud-sidebar" id="hud-sidebar">
+          
+          <!-- Mini Calendario -->
+          <div class="hud-mini-cal-card">
+            <div class="mini-cal-header">
+              <span class="mini-cal-title" id="mini-cal-title">Ottobre 2026</span>
+              <div class="mini-cal-nav">
+                <button class="mini-nav-btn" id="mini-prev-month" aria-label="Mese prec">&lt;</button>
+                <button class="mini-nav-btn" id="mini-next-month" aria-label="Mese succ">&gt;</button>
+              </div>
+            </div>
+            <div class="mini-cal-weekdays">
+              <span>Lu</span><span>Lt</span><span>Mi</span><span>Gio</span><span>V</span><span>Sa</span><span>Do</span>
+            </div>
+            <div class="mini-cal-grid" id="mini-cal-grid">
+              <!-- Renderizzato dinamicamente via JS con indicatori eventi e giorno attivo -->
+            </div>
           </div>
-        </button>
-        <div class="arc-status-text" id="arc-status-text">TOCCA PER PARLARE</div>
-        <div id="jarvis-bubble" role="status" aria-live="polite">
-          <span class="jarvis-label">J.A.R.V.I.S.</span>
-          <span id="jarvis-text">Sistema pronto. Come posso assisterti?</span>
-        </div>
 
-        <!-- Next Shift Card -->
-        <div id="next-shift-card" class="next-shift-card" role="region" aria-label="Prossimo turno">
-          <div class="card-header">
-            <span>📅</span>
-            <span class="card-header-label">PROSSIMO TURNO &amp; CONVOCAZIONE</span>
+          <!-- Sezione Calendari (Filtri Lavoro Reale) -->
+          <div class="hud-calendars-card">
+            <div class="calendars-header">
+              <span class="calendars-title">Calendari Lavoro</span>
+              <button class="btn-add-event-mini" id="btn-quick-add-event" title="Aggiungi Evento Personalizzato" aria-label="Nuovo Evento">+</button>
+            </div>
+            <div class="calendar-toggle-list">
+              <!-- 1. SSC Napoli -->
+              <label class="hud-toggle-item" for="filter-napoli">
+                <div class="toggle-label-wrap">
+                  <span class="hud-filter-dot dot-napoli"></span>
+                  <span class="toggle-name">SSC Napoli</span>
+                </div>
+                <div class="hud-switch">
+                  <input type="checkbox" id="filter-napoli" checked data-category="NAPOLI" />
+                  <span class="switch-slider slider-napoli"></span>
+                </div>
+              </label>
+
+              <!-- 2. Juve Stabia -->
+              <label class="hud-toggle-item" for="filter-stabia">
+                <div class="toggle-label-wrap">
+                  <span class="hud-filter-dot dot-stabia"></span>
+                  <span class="toggle-name">Juve Stabia</span>
+                </div>
+                <div class="hud-switch">
+                  <input type="checkbox" id="filter-stabia" checked data-category="STABIA" />
+                  <span class="switch-slider slider-stabia"></span>
+                </div>
+              </label>
+
+              <!-- 3. Casertana FC -->
+              <label class="hud-toggle-item" for="filter-casertana">
+                <div class="toggle-label-wrap">
+                  <span class="hud-filter-dot dot-casertana"></span>
+                  <span class="toggle-name">Casertana FC</span>
+                </div>
+                <div class="hud-switch">
+                  <input type="checkbox" id="filter-casertana" checked data-category="CASERTANA" />
+                  <span class="switch-slider slider-casertana"></span>
+                </div>
+              </label>
+
+              <!-- 4. Mostra d'Oltremare -->
+              <label class="hud-toggle-item" for="filter-mostra">
+                <div class="toggle-label-wrap">
+                  <span class="hud-filter-dot dot-mostra"></span>
+                  <span class="toggle-name">Mostra d'Oltremare</span>
+                </div>
+                <div class="hud-switch">
+                  <input type="checkbox" id="filter-mostra" checked data-category="MOSTRA" />
+                  <span class="switch-slider slider-mostra"></span>
+                </div>
+              </label>
+
+              <!-- 5. Eventi Aggiunti / Personali -->
+              <label class="hud-toggle-item" for="filter-custom">
+                <div class="toggle-label-wrap">
+                  <span class="hud-filter-dot dot-custom"></span>
+                  <span class="toggle-name">Eventi Aggiunti</span>
+                </div>
+                <div class="hud-switch">
+                  <input type="checkbox" id="filter-custom" checked data-category="CUSTOM" />
+                  <span class="switch-slider slider-custom"></span>
+                </div>
+              </label>
+            </div>
           </div>
-          <div id="next-shift-content" class="no-events-msg">CARICAMENTO IN CORSO...</div>
-        </div>
-      </div>
 
-      <!-- Calendar Controls -->
-      <div class="calendar-controls">
-        <button class="view-toggle-btn active" id="btn-month-view" aria-pressed="true" aria-label="Vista mensile">
-          📆 MESE
-        </button>
-        <button class="view-toggle-btn" id="btn-list-view" aria-pressed="false" aria-label="Vista lista">
-          📋 LISTA
-        </button>
-      </div>
+          <!-- Card Info Prossimo Turno nel sidebar -->
+          <div class="hud-sidebar-next-shift" id="hud-sidebar-next-shift">
+            <div class="next-shift-mini-badge">PROSSIMO TURNO LAVORO</div>
+            <div class="next-shift-mini-title" id="sidebar-next-shift-title">Caricamento...</div>
+            <div class="next-shift-mini-time" id="sidebar-next-shift-time">—</div>
+          </div>
+        </aside>
 
-      <!-- FullCalendar -->
-      <div id="calendar-container" role="grid" aria-label="Calendario eventi"></div>
+        <!-- Area Principale Griglia Calendario -->
+        <div class="hud-main-grid-container" id="hud-main-grid-container">
+
+          <!-- Vista Settimana (Principale come nello screenshot) -->
+          <div class="hud-week-view" id="hud-week-view">
+            <!-- Intestazione 7 Colonne -->
+            <div class="week-header-row" id="week-header-row">
+              <div class="gutter-header-spacer"></div>
+              <div class="week-day-headers" id="week-day-headers">
+                <!-- 7 intestazioni giorni: 12 Lun, 13 Mar, 14 Mer, 15 Gio, 16 Ven, 17 Sab, 18 Dom -->
+              </div>
+            </div>
+
+            <!-- Corpo Griglia con Time Gutter e 7 Colonne -->
+            <div class="week-grid-scroller" id="week-grid-scroller">
+              <div class="week-grid-canvas" id="week-grid-canvas">
+                <!-- Colonna orari a sinistra (08:00 - 23:00) -->
+                <div class="hud-time-gutter" id="hud-time-gutter">
+                  <!-- 08:00, 09:00, 10:00, ..., 23:00 -->
+                </div>
+
+                <!-- Griglia delle 7 colonne giorni -->
+                <div class="week-columns-wrap" id="week-columns-wrap">
+                  <!-- Linee orizzontali orarie in background -->
+                  <div class="week-grid-lines" id="week-grid-lines"></div>
+
+                  <!-- Linea orario corrente con indicatore luminoso -->
+                  <div class="hud-current-time-line" id="hud-current-time-line">
+                    <span class="time-line-dot"></span>
+                    <span class="time-line-bar"></span>
+                  </div>
+
+                  <!-- 7 colonne giorni per posizionare le carte evento -->
+                  <div class="week-day-columns" id="week-day-columns">
+                    <!-- 7 colonne con card eventi posizionate per orario -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vista Giorno (Singolo giorno con dettaglio orario 08-24) -->
+          <div class="hud-day-view" id="hud-day-view" style="display:none;">
+            <div class="day-view-header" id="day-view-header"></div>
+            <div class="day-view-scroller" id="day-view-scroller">
+              <div class="day-view-canvas" id="day-view-canvas">
+                <div class="hud-time-gutter" id="day-time-gutter"></div>
+                <div class="day-column-single" id="day-column-single">
+                  <div class="week-grid-lines" id="day-grid-lines"></div>
+                  <div class="day-events-wrap" id="day-events-wrap"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vista Mese (Griglia mensile HUD con badge eventi) -->
+          <div class="hud-month-view" id="hud-month-view" style="display:none;">
+            <div class="month-grid-header">
+              <span>Lunedì</span><span>Martedì</span><span>Mercoledì</span><span>Giovedì</span><span>Venerdì</span><span>Sabato</span><span>Domenica</span>
+            </div>
+            <div class="month-grid-body" id="month-grid-body">
+              <!-- Celle 7x5 o 7x6 del mese con chip eventi luminosi -->
+            </div>
+          </div>
+
+        </div><!-- /hud-main-grid-container -->
+      </div><!-- /hud-calendar-workspace -->
 
     </section>
 
@@ -215,7 +388,7 @@
         <div class="sheet-detail-icon">⏰</div>
         <div class="sheet-detail-content">
           <div class="sheet-detail-label">ORARIO EVENTO</div>
-          <div class="sheet-detail-value" id="sheet-event-time">—</div>
+          <div class="sheet-detail-value mono" id="sheet-event-time">—</div>
         </div>
       </div>
 
@@ -223,7 +396,7 @@
         <div class="sheet-detail-icon">🔔</div>
         <div class="sheet-detail-content">
           <div class="sheet-detail-label">CONVOCAZIONE (4H PRIMA)</div>
-          <div class="sheet-detail-value" id="sheet-call-time">—</div>
+          <div class="sheet-detail-value mono amber" id="sheet-call-time">—</div>
         </div>
       </div>
 
@@ -376,6 +549,94 @@
       </div>
 
     </div>
+  </div>
+</div>
+
+<!-- HUD Search Modal -->
+<div id="search-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-search-title" aria-hidden="true">
+  <div class="modal-container hud-search-modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-icon">🔍</span>
+        <div>
+          <h2 class="modal-title" id="modal-search-title">RICERCA EVENTI &amp; TURNI</h2>
+          <div class="modal-subtitle">CERCA PER NOME, STADIO O CATEGORIA</div>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="btn-close-search" aria-label="Chiudi">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="hud-search-bar-wrap">
+        <input type="text" id="hud-search-input" class="hud-search-input" placeholder="Digita per cercare... es. Napoli, Juve Stabia, Casertana, Mostra" autocomplete="off" />
+      </div>
+      <div class="search-category-pills" id="search-category-pills">
+        <button class="search-pill active" data-filter="ALL">TUTTI</button>
+        <button class="search-pill" data-filter="NAPOLI">SSC NAPOLI</button>
+        <button class="search-pill" data-filter="STABIA">JUVE STABIA</button>
+        <button class="search-pill" data-filter="CASERTANA">CASERTANA</button>
+        <button class="search-pill" data-filter="MOSTRA">MOSTRA D'OLTREMARE</button>
+        <button class="search-pill" data-filter="CUSTOM">ALTRI</button>
+      </div>
+      <div id="hud-search-results" class="hud-search-results-list">
+        <div class="empty-state">Inizia a digitare per cercare tra i turni e gli appuntamenti</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HUD Add Event Modal -->
+<div id="add-event-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" aria-hidden="true">
+  <div class="modal-container hud-add-modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-icon">➕</span>
+        <div>
+          <h2 class="modal-title" id="modal-add-title">NUOVO APPUNTAMENTO</h2>
+          <div class="modal-subtitle">AGGIUNGI UN TURNO O EVENTO AL CALENDARIO</div>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="btn-close-add-event" aria-label="Chiudi">&times;</button>
+    </div>
+    <form id="add-event-form" class="modal-body hud-modal-form">
+      <div class="form-group">
+        <label for="new-event-title">TITOLO EVENTO / PARTITA</label>
+        <input type="text" id="new-event-title" required placeholder="Es. Napoli vs Milan, Fiera del Libro..." class="hud-input" />
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label for="new-event-category">CATEGORIA LAVORO</label>
+          <select id="new-event-category" class="hud-select">
+            <option value="NAPOLI">SSC Napoli (Stadio Maradona)</option>
+            <option value="STABIA">Juve Stabia (Stadio Romeo Menti)</option>
+            <option value="CASERTANA">Casertana FC (Stadio Alberto Pinto)</option>
+            <option value="MOSTRA">Mostra d'Oltremare (Fiere)</option>
+            <option value="CUSTOM">Altro / Personale</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="new-event-venue">SEDE / STADIO</label>
+          <input type="text" id="new-event-venue" placeholder="Es. Stadio Maradona, Ufficio..." class="hud-input" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label for="new-event-start">DATA E ORA INIZIO</label>
+          <input type="datetime-local" id="new-event-start" required class="hud-input" />
+        </div>
+        <div class="form-group">
+          <label for="new-event-duration">DURATA (ORE)</label>
+          <input type="number" id="new-event-duration" value="1.5" min="0.5" max="12" step="0.5" class="hud-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="new-event-notes">NOTE (SUB-TEXT)</label>
+        <input type="text" id="new-event-notes" placeholder="Dettagli aggiuntivi, promemoria..." class="hud-input" />
+      </div>
+      <div class="form-actions-wrap">
+        <button type="button" class="btn-hud-cancel" id="btn-cancel-add">Annulla</button>
+        <button type="submit" class="btn-hud-submit">Salva nel Calendario</button>
+      </div>
+    </form>
   </div>
 </div>
 

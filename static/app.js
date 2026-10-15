@@ -1,6 +1,7 @@
 /* ================================================================
    S.T.E.W.A.R.D. OS — app.js
    J.A.R.V.I.S. Mobile Interface
+   Versione: Neo-Swiss Restyling + Bug Fix Napoli + TTS Italiano
    ================================================================ */
 
 'use strict';
@@ -8,13 +9,18 @@
 // ─── State ──────────────────────────────────────────────────────
 const STATE = {
   events: [],
-  currentView: 'dayGridMonth',
+  currentView: 'week', // 'week' (default screenshot) | 'day' | 'month'
   activeTab: 'calendar',
+  selectedDate: new Date('2026-10-14T09:30:00'), // Default matches screenshot: 14 Ottobre 2026
+  miniCalMonth: new Date('2026-10-01'), // Mini calendar view month
+  activeCategories: new Set(['NAPOLI', 'STABIA', 'CASERTANA', 'MOSTRA', 'CUSTOM']),
   selectedEvent: null,
   isListening: false,
   isSpeaking: false,
   calendar: null,
   lastSync: null,
+  searchQuery: '',
+  searchCategory: 'ALL',
 };
 
 // ─── Category Config ────────────────────────────────────────────
@@ -23,9 +29,9 @@ const CATEGORY_CONFIG = {
     napoli:     { color: '#00a8ff', label: 'SSC NAPOLI',    stadium: 'Stadio Diego Armando Maradona' },
     stabia:     { color: '#f5b700', label: 'JUVE STABIA',   stadium: 'Stadio Romeo Menti' },
     casertana:  { color: '#ff0055', label: 'CASERTANA FC',  stadium: 'Stadio Alberto Pinto' },
-    default:    { color: '#00f3ff', label: 'CALCIO',         stadium: '' },
+    default:    { color: '#00E5FF', label: 'CALCIO',         stadium: '' },
   },
-  FIERA: { color: '#00ff88', label: 'MOSTRA D\'OLTREMARE' },
+  FIERA: { color: '#10B981', label: 'MOSTRA D\'OLTREMARE' },
 };
 
 function getCategoryStyle(event) {
@@ -37,12 +43,12 @@ function getCategoryStyle(event) {
     if (title.includes('napoli') || venue.includes('maradona'))   return { color: '#00a8ff', badgeClass: 'napoli',    label: 'NAPOLI' };
     if (title.includes('stabia') || venue.includes('menti'))      return { color: '#f5b700', badgeClass: 'stabia',    label: 'J.STABIA' };
     if (title.includes('casertana') || venue.includes('pinto'))   return { color: '#ff0055', badgeClass: 'casertana', label: 'CASERTANA' };
-    return { color: '#00f3ff', badgeClass: 'default', label: 'CALCIO' };
+    return { color: '#00E5FF', badgeClass: 'default', label: 'CALCIO' };
   }
   if (cat === 'FIERA' || venue.includes('mostra')) {
-    return { color: '#00ff88', badgeClass: 'mostra', label: 'MOSTRA' };
+    return { color: '#10B981', badgeClass: 'mostra', label: 'MOSTRA' };
   }
-  return { color: '#00f3ff', badgeClass: 'default', label: cat || 'EVENTO' };
+  return { color: '#00E5FF', badgeClass: 'default', label: cat || 'EVENTO' };
 }
 
 // ─── Formatters ─────────────────────────────────────────────────
@@ -95,16 +101,6 @@ async function apiPost(path, body = {}) {
   return resp.json();
 }
 
-async function apiPatch(path, body = {}) {
-  const resp = await fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
-}
-
 // ─── Toast ──────────────────────────────────────────────────────
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
@@ -123,12 +119,91 @@ function updateClock() {
   el.textContent = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+// ─── HUD Date Helpers ──────────────────────────────────────────
+function formatYMD(d) {
+  if (!d) return '';
+  const dt = (d instanceof Date) ? d : new Date(d);
+  const year = dt.getFullYear();
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isSameDay(d1, d2) {
+  if (!d1 || !d2) return false;
+  const a = (d1 instanceof Date) ? d1 : new Date(d1);
+  const b = (d2 instanceof Date) ? d2 : new Date(d2);
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth() === b.getMonth() &&
+         a.getDate() === b.getDate();
+}
+
+function getMonday(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(dt.setDate(diff));
+}
+
+// ─── Classification & Styling ──────────────────────────────────
+function classifyEventCategory(ev) {
+  const cat   = (ev.category || '').toUpperCase();
+  const title = (ev.title || '').toLowerCase();
+  const venue = (ev.venue || '').toLowerCase();
+
+  // 1. SSC Napoli (Stadio Diego Armando Maradona)
+  if (title.includes('napoli') || venue.includes('maradona') || cat === 'NAPOLI') {
+    return 'NAPOLI';
+  }
+  // 2. Juve Stabia (Stadio Romeo Menti)
+  if (title.includes('stabia') || venue.includes('menti') || cat === 'STABIA') {
+    return 'STABIA';
+  }
+  // 3. Casertana FC (Stadio Alberto Pinto)
+  if (title.includes('casertana') || venue.includes('pinto') || cat === 'CASERTANA') {
+    return 'CASERTANA';
+  }
+  // 4. Mostra d'Oltremare (Fiere ed Eventi)
+  if (cat === 'FIERA' || cat === 'MOSTRA' || venue.includes('mostra') ||
+      title.includes('mostra') || title.includes('fiera') || title.includes('oltremare') ||
+      title.includes('tutto sposi') || title.includes('archeo') || title.includes('comicon') ||
+      title.includes('creattiva')) {
+    return 'MOSTRA';
+  }
+  // Fallback squadre per categoria generica CALCIO
+  if (cat === 'CALCIO' || cat === 'FOOTBALL') {
+    if (title.includes('napoli')) return 'NAPOLI';
+    if (title.includes('stabia')) return 'STABIA';
+    if (title.includes('casertana')) return 'CASERTANA';
+    return 'NAPOLI';
+  }
+  // 5. Eventi Aggiunti / Manuali / Altro
+  return 'CUSTOM';
+}
+
+function getHudEventStyle(ev) {
+  const group = classifyEventCategory(ev);
+  if (group === 'NAPOLI') {
+    return { class: 'napoli', color: '#00a8ff', label: 'SSC NAPOLI', glyph: '⚽' };
+  }
+  if (group === 'STABIA') {
+    return { class: 'stabia', color: '#f5b700', label: 'JUVE STABIA', glyph: '🐝' };
+  }
+  if (group === 'CASERTANA') {
+    return { class: 'casertana', color: '#ff0055', label: 'CASERTANA FC', glyph: '🦅' };
+  }
+  if (group === 'MOSTRA') {
+    return { class: 'mostra', color: '#10b981', label: 'MOSTRA D\'OLTREMARE', glyph: '🏛️' };
+  }
+  return { class: 'custom', color: '#c084fc', label: 'EVENTO AGGIUNTO', glyph: '📝' };
+}
+
 // ─── Load Events ────────────────────────────────────────────────
 async function loadEvents() {
   try {
     const data = await apiGet('/api/events');
     STATE.events = data.events || [];
-    renderCalendar();
+    renderHudCalendar();
     renderNextShift();
     renderShiftsList();
     await loadAlerts();
@@ -140,98 +215,409 @@ async function loadEvents() {
 
 // ─── Next Shift Card ────────────────────────────────────────────
 function renderNextShift() {
-  const el = document.getElementById('next-shift-content');
   const future = STATE.events
     .filter(e => isFuture(e.event_start))
     .sort((a, b) => new Date(a.event_start.replace(' ', 'T')) - new Date(b.event_start.replace(' ', 'T')));
 
+  const sideTitle = document.getElementById('sidebar-next-shift-title');
+  const sideTime = document.getElementById('sidebar-next-shift-time');
+
   if (!future.length) {
-    el.innerHTML = `<div class="no-events-msg">NESSUN TURNO FUTURO PROGRAMMATO</div>`;
+    if (sideTitle) sideTitle.textContent = 'Nessun turno futuro';
+    if (sideTime) sideTime.textContent = '—';
     return;
   }
 
   const next = future[0];
-  const style = getCategoryStyle(next);
-  el.innerHTML = `
-    <div class="next-event-title">${next.title}</div>
-    <div class="next-event-meta">
-      <div class="meta-row">
-        <span class="meta-icon">⏰</span>
-        <span>${formatDateTime(next.event_start)}</span>
-      </div>
-      <div class="meta-row call-time">
-        <span class="meta-icon">🔔</span>
-        <span>CONVOCAZIONE: ${formatDateTime(next.call_time)}</span>
-      </div>
-      ${next.venue ? `<div class="meta-row"><span class="meta-icon">📍</span><span>${next.venue}</span></div>` : ''}
-      <div class="meta-row" style="margin-top:4px;">
-        <span class="cat-badge ${style.badgeClass}">${style.label}</span>
-        ${next.conflict ? `<span class="status-badge conflict">⚠️ CONFLITTO</span>` : ''}
-      </div>
-    </div>`;
+  if (sideTitle) sideTitle.textContent = next.title;
+  if (sideTime) sideTime.textContent = formatDateTime(next.event_start);
 }
 
-// ─── FullCalendar ───────────────────────────────────────────────
-function renderCalendar() {
-  const container = document.getElementById('calendar-container');
-  if (STATE.calendar) {
-    STATE.calendar.destroy();
+// ─── HUD Calendar Master Render ─────────────────────────────────
+function renderHudCalendar() {
+  const monthNames = [
+    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+  ];
+
+  // Aggiorna titolo Top Header (es. STEWARD // OTTOBRE 2026)
+  const headerMonthLabel = document.getElementById('hud-month-label');
+  if (headerMonthLabel) {
+    const curM = monthNames[STATE.selectedDate.getMonth()].toUpperCase();
+    const curY = STATE.selectedDate.getFullYear();
+    headerMonthLabel.textContent = `${curM} ${curY}`;
   }
 
-  const calEvents = STATE.events.map(ev => {
-    const style = getCategoryStyle(ev);
-    return {
-      id: String(ev.id),
-      title: ev.title,
-      start: ev.event_start.replace(' ', 'T'),
-      backgroundColor: style.color,
-      borderColor: ev.conflict ? '#ff3860' : style.color,
-      textColor: '#050b14',
-      extendedProps: ev,
-      classNames: ev.conflict ? ['conflict-event'] : [],
-    };
+  // Renderizza Mini Calendario Sidebar
+  renderMiniCalendar();
+
+  // Switch contenitori di vista
+  const weekView = document.getElementById('hud-week-view');
+  const dayView = document.getElementById('hud-day-view');
+  const monthView = document.getElementById('hud-month-view');
+
+  if (weekView) weekView.style.display = STATE.currentView === 'week' ? 'flex' : 'none';
+  if (dayView) dayView.style.display = STATE.currentView === 'day' ? 'flex' : 'none';
+  if (monthView) monthView.style.display = STATE.currentView === 'month' ? 'flex' : 'none';
+
+  // Aggiorna bottoni pill vista
+  document.querySelectorAll('.hud-view-pill').forEach(btn => {
+    const isAct = btn.dataset.view === STATE.currentView;
+    btn.classList.toggle('active', isAct);
+    btn.setAttribute('aria-checked', isAct ? 'true' : 'false');
   });
 
-  STATE.calendar = new FullCalendar.Calendar(container, {
-    locale: 'it',
-    initialView: STATE.currentView,
-    headerToolbar: {
-      left: 'prev',
-      center: 'title',
-      right: 'next',
-    },
-    height: 'auto',
-    events: calEvents,
-    eventClick: (info) => openBottomSheet(info.event.extendedProps),
-    eventDisplay: 'block',
-    dayMaxEvents: 2,
-    moreLinkText: (n) => `+${n}`,
-    listDayFormat: { weekday: 'long', day: 'numeric', month: 'long' },
-    listDaySideFormat: false,
-    noEventsText: 'Nessun evento in questo periodo',
-    buttonText: {
-      today: 'Oggi',
-      month: 'Mese',
-      list: 'Lista',
-    },
-    eventTimeFormat: {
-      hour: '2-digit',
-      minute: '2-digit',
-      meridiem: false,
-    },
+  if (STATE.currentView === 'week') {
+    renderHudWeekView();
+  } else if (STATE.currentView === 'day') {
+    renderHudDayView();
+  } else if (STATE.currentView === 'month') {
+    renderHudMonthView();
+  }
+}
+
+// ─── Mini Calendar Component ────────────────────────────────────
+function renderMiniCalendar() {
+  const titleEl = document.getElementById('mini-cal-title');
+  const gridEl = document.getElementById('mini-cal-grid');
+  if (!gridEl) return;
+
+  const monthNames = [
+    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+  ];
+
+  const viewYear = STATE.miniCalMonth.getFullYear();
+  const viewMonth = STATE.miniCalMonth.getMonth();
+  if (titleEl) {
+    titleEl.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+  }
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const lastDay = new Date(viewYear, viewMonth + 1, 0);
+  const daysInMonth = lastDay.getDate();
+
+  // Lunedì = 0: Lu=0, Lt=1, Mi=2, Gio=3, V=4, Sa=5, Do=6
+  let startingDay = firstDay.getDay() - 1;
+  if (startingDay < 0) startingDay = 6;
+
+  const prevMonthLastDay = new Date(viewYear, viewMonth, 0).getDate();
+
+  let html = '';
+
+  // Giorni mese precedente
+  for (let i = startingDay - 1; i >= 0; i--) {
+    const dNum = prevMonthLastDay - i;
+    const prevDate = new Date(viewYear, viewMonth - 1, dNum);
+    html += `<div class="mini-day-cell other-month" data-date="${formatYMD(prevDate)}">${dNum}</div>`;
+  }
+
+  // Giorni mese corrente
+  for (let d = 1; d <= daysInMonth; d++) {
+    const curDate = new Date(viewYear, viewMonth, d);
+    const dateStr = formatYMD(curDate);
+    const isSelected = isSameDay(curDate, STATE.selectedDate);
+
+    // Verifica eventi presenti per questo giorno
+    const hasEvents = STATE.events.some(e => e.event_start.startsWith(dateStr));
+    const isTech = (d === 31); // 31 con corner tech come nello screenshot
+
+    let classes = 'mini-day-cell';
+    if (isSelected) classes += ' active-day';
+    if (hasEvents) classes += ' has-event';
+    if (isTech) classes += ' tech-corner';
+
+    html += `<div class="${classes}" data-date="${dateStr}">${d}</div>`;
+  }
+
+  // Giorni mese successivo a completamento griglia
+  const totalRendered = startingDay + daysInMonth;
+  const remainingCells = (totalRendered <= 35 ? 35 : 42) - totalRendered;
+  for (let n = 1; n <= remainingCells; n++) {
+    const nextDate = new Date(viewYear, viewMonth + 1, n);
+    html += `<div class="mini-day-cell other-month" data-date="${formatYMD(nextDate)}">${n}</div>`;
+  }
+
+  gridEl.innerHTML = html;
+
+  // Click su giorno mini calendario
+  gridEl.querySelectorAll('.mini-day-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const targetDateStr = cell.dataset.date;
+      if (targetDateStr) {
+        STATE.selectedDate = new Date(targetDateStr + 'T09:30:00');
+        renderHudCalendar();
+      }
+    });
+  });
+}
+
+// ─── Week View Component (Screenshot Replicant) ─────────────────
+function renderHudWeekView() {
+  const headersEl = document.getElementById('week-day-headers');
+  const timeGutterEl = document.getElementById('hud-time-gutter');
+  const gridLinesEl = document.getElementById('week-grid-lines');
+  const dayColumnsEl = document.getElementById('week-day-columns');
+  const timeLineEl = document.getElementById('hud-current-time-line');
+  if (!headersEl || !dayColumnsEl) return;
+
+  const monday = getMonday(STATE.selectedDate);
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    weekDays.push(d);
+  }
+
+  const shortDayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+  // 1. Intestazioni 7 Colonne
+  headersEl.innerHTML = weekDays.map((d, idx) => {
+    const dNum = d.getDate();
+    const dName = shortDayNames[idx];
+    const isSelected = isSameDay(d, STATE.selectedDate);
+    const activeClass = isSelected ? ' active-day-header' : '';
+    const dateStr = formatYMD(d);
+    return `<div class="week-day-col-header${activeClass}" data-date="${dateStr}" role="button" tabindex="0">
+      <span>${dNum} ${dName}</span>
+    </div>`;
+  }).join('');
+
+  headersEl.querySelectorAll('.week-day-col-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const dateStr = header.dataset.date;
+      if (dateStr) {
+        STATE.selectedDate = new Date(dateStr + 'T09:30:00');
+        renderHudCalendar();
+      }
+    });
   });
 
-  STATE.calendar.render();
+  // 2. Time Gutter (08:00 - 23:00)
+  if (timeGutterEl) {
+    let gutterHtml = '';
+    for (let h = 8; h <= 23; h++) {
+      const top = (h - 8) * 60;
+      const hStr = String(h).padStart(2, '0') + ':00';
+      gutterHtml += `<div class="gutter-hour-mark" style="top:${top}px;">${hStr}</div>`;
+    }
+    timeGutterEl.innerHTML = gutterHtml;
+  }
+
+  // 3. Linee Griglia Orizzontali
+  if (gridLinesEl) {
+    let linesHtml = '';
+    for (let h = 8; h <= 23; h++) {
+      const top = (h - 8) * 60;
+      linesHtml += `<div class="grid-hour-line" style="top:${top}px;"></div>`;
+    }
+    gridLinesEl.innerHTML = linesHtml;
+  }
+
+  // 4. Linea Orario Corrente (con punto luminoso)
+  if (timeLineEl) {
+    let curHour = 9, curMin = 45; // Match screenshot per la data 14 Ottobre
+    const selectedYMD = formatYMD(STATE.selectedDate);
+    if (selectedYMD === formatYMD(new Date())) {
+      const now = new Date();
+      curHour = now.getHours();
+      curMin = now.getMinutes();
+    }
+    if (curHour >= 8 && curHour <= 23) {
+      const timeTop = ((curHour - 8) + curMin / 60) * 60;
+      timeLineEl.style.top = `${timeTop}px`;
+      timeLineEl.style.display = 'block';
+    } else {
+      timeLineEl.style.display = 'none';
+    }
+  }
+
+  // 5. Colonne e Posizionamento Event Cards
+  dayColumnsEl.innerHTML = weekDays.map((d) => {
+    const dateStr = formatYMD(d);
+    const isSelected = isSameDay(d, STATE.selectedDate);
+    const colClass = isSelected ? 'week-day-column active-day-col' : 'week-day-column';
+
+    // Filtra eventi per la data e categorie attive
+    const colEvents = STATE.events.filter(ev => {
+      if (!ev.event_start.startsWith(dateStr)) return false;
+      const catGroup = classifyEventCategory(ev);
+      return STATE.activeCategories.has(catGroup);
+    });
+
+    // Render Event Cards
+    const cardsHtml = colEvents.map(ev => {
+      const style = getHudEventStyle(ev);
+      const timeParts = ev.event_start.split(' ')[1] || '09:00:00';
+      const [h, m] = timeParts.split(':').map(Number);
+      const startMinutes = (h - 8) * 60 + m;
+      const top = Math.max(0, (startMinutes / 60) * 60);
+
+      // Stima durata evento
+      let durationHours = 2.0;
+      const group = classifyEventCategory(ev);
+      if (group === 'NAPOLI' || group === 'STABIA' || group === 'CASERTANA') {
+        durationHours = 2.5;
+      } else if (group === 'MOSTRA') {
+        durationHours = 3.5;
+      } else {
+        durationHours = 1.5;
+      }
+
+      const height = Math.max(52, durationHours * 60);
+
+      const startTimeFormatted = formatTime(ev.event_start);
+      const endDt = new Date(new Date(ev.event_start.replace(' ', 'T')).getTime() + durationHours * 3600 * 1000);
+      const endTimeFormatted = formatTime(endDt.toISOString());
+      const subText = ev.notes || ev.venue || 'Sub-text';
+
+      return `
+        <div class="hud-event-card ${style.class}" style="top: ${top}px; height: ${height}px;" data-event-id="${ev.id}" role="button" tabindex="0" title="${ev.title}">
+          <div class="hud-event-card-time">${startTimeFormatted} - ${endTimeFormatted}</div>
+          <div class="hud-event-card-title">${ev.title}</div>
+          <div class="hud-event-card-sub">• ${subText}</div>
+          <div class="hud-event-card-glyph">${style.glyph || '🛡️'}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `<div class="${colClass}" data-date="${dateStr}">${cardsHtml}</div>`;
+  }).join('');
+
+  // Click sulle card evento -> apre Bottom Sheet
+  dayColumnsEl.querySelectorAll('.hud-event-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(card.dataset.eventId);
+      const ev = STATE.events.find(x => x.id === id);
+      if (ev) openBottomSheet(ev);
+    });
+  });
+}
+
+// ─── Day View Component ─────────────────────────────────────────
+function renderHudDayView() {
+  const dayHeader = document.getElementById('day-view-header');
+  const dayGutter = document.getElementById('day-time-gutter');
+  const dayLines = document.getElementById('day-grid-lines');
+  const dayEventsWrap = document.getElementById('day-events-wrap');
+  if (!dayHeader || !dayEventsWrap) return;
+
+  const dateStr = formatDate(formatYMD(STATE.selectedDate));
+  dayHeader.textContent = `VISTA GIORNALIERA // ${dateStr.toUpperCase()}`;
+
+  let gutterHtml = '';
+  let linesHtml = '';
+  for (let h = 8; h <= 23; h++) {
+    const top = (h - 8) * 60;
+    const hStr = String(h).padStart(2, '0') + ':00';
+    gutterHtml += `<div class="gutter-hour-mark" style="top:${top}px;">${hStr}</div>`;
+    linesHtml += `<div class="grid-hour-line" style="top:${top}px;"></div>`;
+  }
+  dayGutter.innerHTML = gutterHtml;
+  dayLines.innerHTML = linesHtml;
+
+  const selectedYMD = formatYMD(STATE.selectedDate);
+  const dayEvents = STATE.events.filter(ev => {
+    if (!ev.event_start.startsWith(selectedYMD)) return false;
+    const catGroup = classifyEventCategory(ev);
+    return STATE.activeCategories.has(catGroup);
+  });
+
+  dayEventsWrap.innerHTML = dayEvents.map(ev => {
+    const style = getHudEventStyle(ev);
+    const timeParts = ev.event_start.split(' ')[1] || '09:00:00';
+    const [h, m] = timeParts.split(':').map(Number);
+    const top = Math.max(0, ((h - 8) + m / 60) * 60);
+    const height = 75;
+    const startTimeFormatted = formatTime(ev.event_start);
+    const subText = ev.notes || ev.venue || 'Sub-text';
+
+    return `
+      <div class="hud-event-card ${style.class}" style="top: ${top}px; height: ${height}px; left: 16px; right: 16px;" data-event-id="${ev.id}" role="button" tabindex="0">
+        <div class="hud-event-card-time">${startTimeFormatted}</div>
+        <div class="hud-event-card-title">${ev.title}</div>
+        <div class="hud-event-card-sub">• ${subText}</div>
+        <div class="hud-event-card-glyph">${style.glyph || '🛡️'}</div>
+      </div>
+    `;
+  }).join('');
+
+  dayEventsWrap.querySelectorAll('.hud-event-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = parseInt(card.dataset.eventId);
+      const ev = STATE.events.find(x => x.id === id);
+      if (ev) openBottomSheet(ev);
+    });
+  });
+}
+
+// ─── Month View Component ───────────────────────────────────────
+function renderHudMonthView() {
+  const bodyEl = document.getElementById('month-grid-body');
+  if (!bodyEl) return;
+
+  const year = STATE.selectedDate.getFullYear();
+  const month = STATE.selectedDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+
+  let startingDay = firstDay.getDay() - 1;
+  if (startingDay < 0) startingDay = 6;
+
+  let html = '';
+  const prevMonthLast = new Date(year, month, 0).getDate();
+
+  for (let i = startingDay - 1; i >= 0; i--) {
+    const dNum = prevMonthLast - i;
+    html += `<div class="month-cell" style="opacity:0.35;"><span class="month-cell-num">${dNum}</span></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const curDate = new Date(year, month, d);
+    const dateStr = formatYMD(curDate);
+    const isSelected = isSameDay(curDate, STATE.selectedDate);
+    const activeClass = isSelected ? ' active-today' : '';
+
+    const dayEvs = STATE.events.filter(e => {
+      if (!e.event_start.startsWith(dateStr)) return false;
+      return STATE.activeCategories.has(classifyEventCategory(e));
+    });
+
+    const chips = dayEvs.slice(0, 3).map(ev => {
+      const style = getHudEventStyle(ev);
+      return `<div class="month-chip ${style.class}" title="${ev.title}">${formatTime(ev.event_start)} ${ev.title}</div>`;
+    }).join('');
+
+    const more = dayEvs.length > 3 ? `<div style="font-size:8px;color:#00E5FF;">+${dayEvs.length - 3} altri</div>` : '';
+
+    html += `
+      <div class="month-cell${activeClass}" data-date="${dateStr}">
+        <span class="month-cell-num">${d}</span>
+        ${chips}
+        ${more}
+      </div>
+    `;
+  }
+
+  bodyEl.innerHTML = html;
+
+  bodyEl.querySelectorAll('.month-cell[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const dStr = cell.dataset.date;
+      if (dStr) {
+        STATE.selectedDate = new Date(dStr + 'T09:30:00');
+        STATE.currentView = 'week';
+        renderHudCalendar();
+      }
+    });
+  });
 }
 
 function switchCalendarView(view) {
   STATE.currentView = view;
-  renderCalendar();
-
-  document.getElementById('btn-month-view').classList.toggle('active', view === 'dayGridMonth');
-  document.getElementById('btn-list-view').classList.toggle('active', view === 'listMonth');
-  document.getElementById('btn-month-view').setAttribute('aria-pressed', view === 'dayGridMonth');
-  document.getElementById('btn-list-view').setAttribute('aria-pressed', view === 'listMonth');
+  renderHudCalendar();
 }
 
 // ─── Shifts List ────────────────────────────────────────────────
@@ -343,7 +729,6 @@ function renderAlerts(data) {
 function generateGoogleCalendarUrl(event) {
   if (!event) return '#';
   try {
-    // Start of shift on Google Calendar is CONVOCAZIONE (4h prima dell'evento)
     const callDt = new Date(event.call_time ? event.call_time.replace(' ', 'T') : event.event_start.replace(' ', 'T'));
     const startDt = new Date(event.event_start.replace(' ', 'T'));
 
@@ -351,9 +736,7 @@ function generateGoogleCalendarUrl(event) {
     const endDurationHours = isFiera ? 8 : 3;
     const endDt = new Date(startDt.getTime() + endDurationHours * 60 * 60 * 1000);
 
-    const toGCalISO = (d) => {
-      return d.toISOString().replace(/-|:|\.\d\d\d/g, '');
-    };
+    const toGCalISO = (d) => d.toISOString().replace(/-|:|\.\d\d\d/g, '');
 
     const dates = `${toGCalISO(callDt)}/${toGCalISO(endDt)}`;
     const callTimeHM = formatTime(event.call_time);
@@ -373,14 +756,12 @@ function generateGoogleCalendarUrl(event) {
       'Generato da S.T.E.W.A.R.D. OS — Sincronizzazione Intelligente'
     ].filter(Boolean).join('\n');
 
-    const location = event.venue || '';
-
     const params = new URLSearchParams({
       action: 'TEMPLATE',
       text: title,
       dates: dates,
       details: details,
-      location: location,
+      location: event.venue || '',
     });
 
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -419,7 +800,6 @@ function openBottomSheet(ev) {
   overlay.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(() => sheet.classList.add('open'));
 
-  // Haptic feedback (mobile)
   if (navigator.vibrate) navigator.vibrate(30);
 }
 
@@ -504,11 +884,94 @@ function switchTab(tabId) {
   navBtn.classList.add('active');
   navBtn.setAttribute('aria-selected', 'true');
 
-  // Forza resize calendario quando si torna al tab
   if (tabId === 'calendar' && STATE.calendar) {
     requestAnimationFrame(() => STATE.calendar.updateSize());
   }
   if (tabId === 'alerts') loadAlerts();
+}
+
+/* ================================================================
+   PARTE 3 — VOCE J.A.R.V.I.S.: Selezione voce + Normalizzatore
+   ================================================================ */
+
+// Voce italiana selezionata (riempita da selectBestItalianVoice)
+let _bestItalianVoice = null;
+
+/**
+ * Seleziona la migliore voce italiana disponibile nel sistema.
+ * Ordine di priorità:
+ *  1. Voci Neural/Online Microsoft o Google (es. "Microsoft Diego Online (Natural)")
+ *  2. Qualsiasi voce it-IT con "Natural", "Online", "Premium" o "Enhanced"
+ *  3. Prima voce it-IT disponibile
+ */
+function selectBestItalianVoice() {
+  const voices = speechSynthesis.getVoices();
+  const itVoices = voices.filter(v => v.lang.startsWith('it'));
+
+  if (!itVoices.length) return null;
+
+  // Priorità 1: Neural/Online Microsoft o Google
+  const tier1 = itVoices.find(v => {
+    const n = v.name.toLowerCase();
+    return (n.includes('microsoft') || n.includes('google')) &&
+           (n.includes('online') || n.includes('natural'));
+  });
+  if (tier1) { console.log('[JARVIS TTS] Voce tier1:', tier1.name); return tier1; }
+
+  // Priorità 2: Natural / Online / Premium / Enhanced (qualsiasi provider)
+  const tier2 = itVoices.find(v => {
+    const n = v.name.toLowerCase();
+    return n.includes('natural') || n.includes('online') ||
+           n.includes('premium') || n.includes('enhanced');
+  });
+  if (tier2) { console.log('[JARVIS TTS] Voce tier2:', tier2.name); return tier2; }
+
+  // Fallback: prima voce it-IT
+  console.log('[JARVIS TTS] Fallback voce:', itVoices[0].name);
+  return itVoices[0];
+}
+
+/**
+ * cleanJarvisSpeechText — Normalizzatore testo per TTS italiano.
+ * Corregge preposizioni, ordinali, "vs", orari per una lettura naturale.
+ * @param {string} text
+ * @returns {string}
+ */
+function cleanJarvisSpeechText(text) {
+  let t = text;
+
+  // Preposizioni articolate (errori grammaticali TTS)
+  t = t.replace(/\bdi il\b/gi, 'del');
+  t = t.replace(/\bdi la\b/gi, 'della');
+  t = t.replace(/\ba il\b/gi, 'al');
+  t = t.replace(/\ba la\b/gi, 'alla');
+  t = t.replace(/\bda il\b/gi, 'dal');
+  t = t.replace(/\bda la\b/gi, 'dalla');
+  t = t.replace(/\bsu il\b/gi, 'sul');
+  t = t.replace(/\bsu la\b/gi, 'sulla');
+
+  // "vs" → "contro" (il TTS legge "vu-esse" o "v-s")
+  t = t.replace(/\bvs\b/gi, 'contro');
+
+  // Ordinali: 1ª→prima, 2ª→seconda, 3ª→terza, ecc.
+  const ordinali = { '1ª': 'prima', '2ª': 'seconda', '3ª': 'terza',
+                      '4ª': 'quarta', '5ª': 'quinta', '6ª': 'sesta',
+                      '1°': 'primo', '2°': 'secondo', '3°': 'terzo',
+                      '4°': 'quarto', '5°': 'quinto' };
+  for (const [pat, rep] of Object.entries(ordinali)) {
+    t = t.split(pat).join(rep);
+  }
+
+  // Orari: "HH:MM" → lettura naturale
+  // "10:00" → "alle 10" / "08:30" → "alle 8 e 30"
+  t = t.replace(/\b(\d{1,2}):00\b/g, (_, h) => h.replace(/^0/, ''));
+  t = t.replace(/\b(\d{1,2}):(\d{2})\b/g, (_, h, m) => `${h.replace(/^0/, '')} e ${m}`);
+
+  // Rimuovi trattini nei codici/sigle (rendono i tts impazzire)
+  // ma NON nelle date, quindi usiamo una regex mirata
+  t = t.replace(/\bSSC\b/gi, 'es-es-ci');
+
+  return t;
 }
 
 // ─── Speech Recognition (J.A.R.V.I.S.) ─────────────────────────
@@ -530,9 +993,24 @@ function initSpeech() {
 
   recognition.onstart = () => {
     STATE.isListening = true;
+    const headerJarvis = document.getElementById('hud-header-jarvis');
+    if (headerJarvis) {
+      headerJarvis.classList.add('listening');
+      headerJarvis.classList.remove('speaking');
+    }
+    const headerStatus = document.getElementById('header-jarvis-status');
+    if (headerStatus) headerStatus.textContent = 'IN ASCOLTO...';
+
+    const capsule = document.getElementById('hud-floating-capsule');
+    if (capsule) {
+      capsule.classList.add('listening');
+      const cmdText = document.getElementById('capsule-command-text');
+      if (cmdText) cmdText.textContent = 'IN ASCOLTO...';
+    }
     const btn = document.getElementById('arc-reactor-btn');
-    btn.classList.add('listening');
-    document.getElementById('arc-status-text').textContent = 'IN ASCOLTO...';
+    if (btn) btn.classList.add('listening');
+    const arcText = document.getElementById('arc-status-text');
+    if (arcText) arcText.textContent = 'IN ASCOLTO...';
     setJarvisText('Ti ascolto...');
   };
 
@@ -558,48 +1036,182 @@ function initSpeech() {
   };
 }
 
+function toggleListening() {
+  if (!recognition) {
+    showToast('Riconoscimento vocale non disponibile su questo browser', 'info');
+    jarvisSpeak('Riconoscimento vocale non disponibile in questo browser.');
+    return;
+  }
+
+  if (STATE.isListening) {
+    try { recognition.stop(); } catch(e){}
+    return;
+  }
+
+  if (STATE.isSpeaking) {
+    speechSynthesis.cancel();
+    STATE.isSpeaking = false;
+    resetArcReactor();
+  }
+
+  try {
+    recognition.start();
+    if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+  } catch (err) {
+    console.error('Errore avvio riconoscimento:', err);
+    showToast('Errore avvio microfono', 'error');
+  }
+}
+
 function resetArcReactor() {
+  const headerJarvis = document.getElementById('hud-header-jarvis');
+  if (headerJarvis) headerJarvis.classList.remove('listening', 'speaking');
+  const headerStatus = document.getElementById('header-jarvis-status');
+  if (headerStatus) headerStatus.textContent = 'TOCCA PER PARLARE';
+
+  const capsule = document.getElementById('hud-floating-capsule');
+  if (capsule) {
+    capsule.classList.remove('listening', 'speaking');
+    const cmdText = document.getElementById('capsule-command-text');
+    if (cmdText) cmdText.textContent = 'TOCCA PER PARLARE';
+  }
   const btn = document.getElementById('arc-reactor-btn');
-  btn.classList.remove('listening', 'speaking');
-  document.getElementById('arc-status-text').textContent = 'TOCCA PER PARLARE';
+  if (btn) btn.classList.remove('listening', 'speaking');
+  const arcText = document.getElementById('arc-status-text');
+  if (arcText) arcText.textContent = 'TOCCA PER PARLARE';
 }
 
+let _speechBubbleTimer = null;
 function setJarvisText(text) {
-  document.getElementById('jarvis-text').textContent = text;
+  const jarvisText = document.getElementById('jarvis-text');
+  if (jarvisText) jarvisText.textContent = text;
+
+  const headerBubble = document.getElementById('header-speech-bubble');
+  const headerSpeechText = document.getElementById('header-speech-text');
+  if (headerBubble && headerSpeechText) {
+    headerSpeechText.textContent = text;
+    headerBubble.style.display = 'block';
+    if (_speechBubbleTimer) clearTimeout(_speechBubbleTimer);
+    _speechBubbleTimer = setTimeout(() => {
+      if (!STATE.isSpeaking && !STATE.isListening) {
+        headerBubble.style.display = 'none';
+      }
+    }, 6000);
+  }
+
+  const bubble = document.getElementById('capsule-feedback-bubble');
+  const speechText = document.getElementById('capsule-speech-feedback');
+  if (bubble && speechText) {
+    bubble.style.display = 'block';
+    speechText.textContent = text;
+  }
 }
 
+/**
+ * jarvisSpeak — TTS con voce italiana ottimizzata.
+ * Passa il testo attraverso cleanJarvisSpeechText prima della sintesi.
+ * Parametri calibrati per tono J.A.R.V.I.S.: calmo, autorevole, profondo.
+ * @param {string} text - Testo da pronunciare (verrà pulito automaticamente)
+ */
 function jarvisSpeak(text) {
-  const btn = document.getElementById('arc-reactor-btn');
   STATE.isSpeaking = true;
-  btn.classList.add('speaking');
-  document.getElementById('arc-status-text').textContent = 'J.A.R.V.I.S. PARLA...';
+  const headerJarvis = document.getElementById('hud-header-jarvis');
+  if (headerJarvis) {
+    headerJarvis.classList.add('speaking');
+    headerJarvis.classList.remove('listening');
+  }
+  const headerStatus = document.getElementById('header-jarvis-status');
+  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
+
+  const capsule = document.getElementById('hud-floating-capsule');
+  if (capsule) {
+    capsule.classList.add('speaking');
+    const cmdText = document.getElementById('capsule-command-text');
+    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
+  }
+  const btn = document.getElementById('arc-reactor-btn');
+  if (btn) btn.classList.add('speaking');
+  const arcText = document.getElementById('arc-status-text');
+  if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
   setJarvisText(text);
 
-  const utterance = new SpeechSynthesisUtterance(text);
+  // Pulizia testo per la sintesi vocale
+  const cleanText = cleanJarvisSpeechText(text);
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = 'it-IT';
-  utterance.rate = 0.95;
-  utterance.pitch = 0.85;
+  utterance.pitch  = 0.92;
+  utterance.rate   = 1.03;
   utterance.volume = 1;
+
+  if (_bestItalianVoice) {
+    utterance.voice = _bestItalianVoice;
+  }
 
   utterance.onend = () => {
     STATE.isSpeaking = false;
     resetArcReactor();
   };
 
-  // Scegli voce italiana se disponibile
-  const voices = speechSynthesis.getVoices();
-  const itVoice = voices.find(v => v.lang.startsWith('it'));
-  if (itVoice) utterance.voice = itVoice;
+  utterance.onerror = () => {
+    STATE.isSpeaking = false;
+    resetArcReactor();
+  };
 
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
+}
+
+/* ================================================================
+   PARTE 2 — FIX LOGICA RICERCA "Prossima partita del Napoli"
+   ================================================================ */
+
+/**
+ * isFootballMatch — Determina se un evento è una PARTITA DI CALCIO
+ * (non una fiera, non un evento generico con "Napoli" nel nome).
+ *
+ * Un evento è considerato partita solo se:
+ * - Il titolo contiene " vs " o " - " tra squadre
+ * - Il campo venue contiene "Stadio" o "Maradona"
+ * - La categoria è CALCIO/FOOTBALL
+ *
+ * Esclusi: titoli con "EXPO NAPOLI", "COMUNE DI", "FIERA", "MOSTRA"
+ *
+ * @param {Object} event - Oggetto evento dal database
+ * @returns {boolean}
+ */
+function isFootballMatch(event) {
+  const title  = (event.title || '').toUpperCase();
+  const venue  = (event.venue || '').toLowerCase();
+  const cat    = (event.category || '').toUpperCase();
+
+  // Esclusione esplicita: fieristici/generici con "Napoli" nel nome
+  const excludeKeywords = ['EXPO NAPOLI', 'COMUNE DI', 'FIERA DI', 'SALONE', 'CONGRESSO', 'CONFERENZA'];
+  if (excludeKeywords.some(kw => title.includes(kw))) return false;
+
+  // Inclusione per categoria
+  if (cat === 'CALCIO' || cat === 'FOOTBALL') return true;
+
+  // Inclusione per venue (stadio)
+  if (venue.includes('stadio') || venue.includes('maradona') ||
+      venue.includes('menti') || venue.includes('pinto') || venue.includes('san paolo')) {
+    return true;
+  }
+
+  // Inclusione per titolo con pattern "Squadra vs Squadra" o "Squadra - Squadra"
+  // Regex: almeno una parola, spazio, "vs"/"VS"/" - ", spazio, almeno una parola
+  if (/\b\w+\s+(vs|VS|contro)\s+\w+\b/.test(event.title)) return true;
+  // Pattern " - " tra due squadre (es. "Napoli - Inter")
+  if (/\b[A-Z][a-zA-Z]+\s+-\s+[A-Z][a-zA-Z]+\b/.test(event.title)) return true;
+
+  return false;
 }
 
 // ─── Voice Commands ──────────────────────────────────────────────
 function processVoiceCommand(cmd) {
   setJarvisText(`"${cmd}"`);
 
-  // Prossimo turno
+  // ── Prossimo turno generico ──
   if (cmd.includes('prossimo turno') || cmd.includes('quando lavoro') || cmd.includes('prossimo servizio')) {
     const future = STATE.events
       .filter(e => isFuture(e.event_start))
@@ -614,7 +1226,7 @@ function processVoiceCommand(cmd) {
     return;
   }
 
-  // Salva su Google Calendar (Turno specifico o Prossimo turno)
+  // ── Salva su Google Calendar ──
   if (
     cmd.includes('google calendar') ||
     cmd.includes('salva su google') ||
@@ -636,30 +1248,50 @@ function processVoiceCommand(cmd) {
     const next = future[0];
     const gcalUrl = generateGoogleCalendarUrl(next);
     window.open(gcalUrl, '_blank');
-    jarvisSpeak(`Apro Google Calendar per il turno di ${next.title}. Convocazione impostata alle ore ${formatTime(next.call_time)}.`);
+    jarvisSpeak(`Apro Google Calendar per il turno del ${next.title}. Convocazione impostata alle ore ${formatTime(next.call_time)}.`);
     showToast(`Apertura Google Calendar per ${next.title}`, 'success');
     return;
   }
 
-  // Napoli
+  // ── Napoli: distingue partita vs evento generico ──
   if (cmd.includes('napoli')) {
-    queryTeam('napoli', 'il Napoli');
+    // Controlla se l'utente sta chiedendo specificamente di calcio/partita
+    const isFootballQuery =
+      cmd.includes('partita') || cmd.includes('partite') || cmd.includes('gioca') ||
+      cmd.includes('calcio') || cmd.includes('stadio') || cmd.includes('maradona') ||
+      cmd.includes('champions') || cmd.includes('serie a') || cmd.includes('coppa');
+
+    if (isFootballQuery) {
+      // Cerca solo partite di calcio, esclude fiere/eventi generici
+      queryFootballMatch('napoli', 'il Napoli');
+    } else {
+      // Query generica: qualsiasi evento con "napoli" nel titolo o venue
+      queryTeam('napoli', 'il Napoli');
+    }
     return;
   }
 
-  // Juve Stabia / Stabia
+  // ── Juve Stabia / Stabia ──
   if (cmd.includes('stabia') || cmd.includes('juve stabia')) {
-    queryTeam('stabia', 'la Juve Stabia');
+    if (cmd.includes('partita') || cmd.includes('gioca') || cmd.includes('calcio')) {
+      queryFootballMatch('stabia', 'la Juve Stabia');
+    } else {
+      queryTeam('stabia', 'la Juve Stabia');
+    }
     return;
   }
 
-  // Casertana
+  // ── Casertana ──
   if (cmd.includes('casertana')) {
-    queryTeam('casertana', 'la Casertana');
+    if (cmd.includes('partita') || cmd.includes('gioca') || cmd.includes('calcio')) {
+      queryFootballMatch('casertana', 'la Casertana');
+    } else {
+      queryTeam('casertana', 'la Casertana');
+    }
     return;
   }
 
-  // Mostra d'Oltremare
+  // ── Mostra d'Oltremare / Fiera ──
   if (cmd.includes('mostra') || cmd.includes('fiera') || cmd.includes('oltremare')) {
     const events = STATE.events.filter(e =>
       isFuture(e.event_start) &&
@@ -675,7 +1307,7 @@ function processVoiceCommand(cmd) {
     return;
   }
 
-  // Aggiorna calendari
+  // ── Aggiorna calendari ──
   if (cmd.includes('aggiorna') || cmd.includes('sincronizza') || cmd.includes('sync')) {
     jarvisSpeak('Avvio sincronizzazione di tutti i calendari.');
     switchTab('sync');
@@ -683,7 +1315,7 @@ function processVoiceCommand(cmd) {
     return;
   }
 
-  // Sovrapposizioni / Conflitti
+  // ── Conflitti ──
   if (cmd.includes('sovrapposiz') || cmd.includes('conflitt') || cmd.includes('coincidenz')) {
     const conflicts = STATE.events.filter(e => e.conflict);
     if (!conflicts.length) {
@@ -695,17 +1327,45 @@ function processVoiceCommand(cmd) {
     return;
   }
 
-  // Quanti eventi
+  // ── Quanti eventi ──
   if (cmd.includes('quanti eventi') || cmd.includes('quanti turni')) {
     const future = STATE.events.filter(e => isFuture(e.event_start));
     jarvisSpeak(`Hai ${future.length} turni futuri in programma su un totale di ${STATE.events.length} eventi nel database.`);
     return;
   }
 
-  // Default
+  // ── Default ──
   jarvisSpeak('Non ho capito il comando. Prova a chiedere: quando è il prossimo turno, quando gioca il Napoli, o aggiorna i calendari.');
 }
 
+/**
+ * queryFootballMatch — Cerca la PROSSIMA PARTITA DI CALCIO per una squadra.
+ * Usa isFootballMatch() per filtrare ed escludere eventi fieristici/generici.
+ * @param {string} keyword - Parola chiave (es. "napoli")
+ * @param {string} teamName - Nome squadra per la risposta vocale (es. "il Napoli")
+ */
+function queryFootballMatch(keyword, teamName) {
+  const events = STATE.events.filter(e => {
+    if (!isFuture(e.event_start)) return false;
+    const titleMatch = (e.title || '').toLowerCase().includes(keyword);
+    const venueMatch = (e.venue || '').toLowerCase().includes(keyword);
+    return (titleMatch || venueMatch) && isFootballMatch(e);
+  }).sort((a, b) => new Date(a.event_start.replace(' ','T')) - new Date(b.event_start.replace(' ','T')));
+
+  if (!events.length) {
+    jarvisSpeak(`Non ho trovato prossime partite di calcio di ${teamName} nel calendario.`);
+  } else {
+    const n = events[0];
+    jarvisSpeak(`La prossima partita di ${teamName} è ${n.title} il ${formatDate(n.event_start)} alle ${formatTime(n.event_start)}. Convocazione alle ${formatTime(n.call_time)}.`);
+  }
+}
+
+/**
+ * queryTeam — Cerca qualsiasi evento futuro legato a una squadra/keyword.
+ * Non filtra per tipo di evento (usato per query generiche).
+ * @param {string} keyword - Parola chiave
+ * @param {string} teamName - Nome per la risposta vocale
+ */
 function queryTeam(keyword, teamName) {
   const events = STATE.events.filter(e =>
     isFuture(e.event_start) &&
@@ -713,35 +1373,13 @@ function queryTeam(keyword, teamName) {
   ).sort((a, b) => new Date(a.event_start.replace(' ','T')) - new Date(b.event_start.replace(' ','T')));
 
   if (!events.length) {
-    jarvisSpeak(`Non ho trovato prossime partite di ${teamName} nel calendario.`);
+    jarvisSpeak(`Non ho trovato prossimi eventi legati a ${teamName} nel calendario.`);
   } else {
     const n = events[0];
-    jarvisSpeak(`La prossima partita di ${teamName} è ${n.title} il ${formatDate(n.event_start)} alle ${formatTime(n.event_start)}. Convocazione alle ${formatTime(n.call_time)}.`);
-  }
-}
-
-function toggleListening() {
-  if (!recognition) {
-    showToast('Riconoscimento vocale non disponibile su questo browser', 'error');
-    return;
-  }
-
-  if (STATE.isListening) {
-    recognition.stop();
-    return;
-  }
-
-  if (STATE.isSpeaking) {
-    speechSynthesis.cancel();
-    STATE.isSpeaking = false;
-  }
-
-  try {
-    recognition.start();
-    if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
-  } catch (err) {
-    console.error('Errore avvio riconoscimento:', err);
-    showToast('Errore avvio microfono', 'error');
+    // Se è una partita, usa la dicitura corretta
+    const isMatch = isFootballMatch(n);
+    const prefix = isMatch ? `La prossima partita di ${teamName}` : `Il prossimo evento di ${teamName}`;
+    jarvisSpeak(`${prefix} è ${n.title} il ${formatDate(n.event_start)} alle ${formatTime(n.event_start)}. Convocazione alle ${formatTime(n.call_time)}.`);
   }
 }
 
@@ -772,13 +1410,26 @@ async function init() {
   // Register SW
   registerServiceWorker();
 
-  // Load voices (async in some browsers)
+  // ── Selezione intelligente voce italiana ──
+  // Attende voiceschanged (necessario su Chrome/Android)
   if ('speechSynthesis' in window) {
-    speechSynthesis.getVoices();
-    speechSynthesis.onvoiceschanged = () => {};
+    const loadVoices = () => {
+      _bestItalianVoice = selectBestItalianVoice();
+      if (_bestItalianVoice) {
+        console.log('[JARVIS TTS] Voce selezionata:', _bestItalianVoice.name, _bestItalianVoice.lang);
+      }
+    };
+
+    // Su Safari/Firefox le voci sono immediate
+    loadVoices();
+
+    // Su Chrome desktop/Android arrivano in modo asincrono
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
   }
 
-  // Init Speech
+  // Init Speech Recognition
   initSpeech();
 
   // Load data
@@ -792,21 +1443,259 @@ async function init() {
   // Hide loading
   setTimeout(hideLoading, 800);
 
-  // J.A.R.V.I.S. welcome
+  // J.A.R.V.I.S. welcome (con piccolo delay per attendere la voce)
   setTimeout(() => {
     jarvisSpeak('Sistema S.T.E.W.A.R.D. online. Tocca il reattore per parlare.');
-  }, 1200);
+  }, 1400);
+}
+
+// ─── Search Modal Logic ─────────────────────────────────────────
+function openSearchModal() {
+  const overlay = document.getElementById('search-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  const input = document.getElementById('hud-search-input');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+  STATE.searchQuery = '';
+  STATE.searchCategory = 'ALL';
+  renderSearchResults();
+}
+
+function closeSearchModal() {
+  const overlay = document.getElementById('search-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+function renderSearchResults() {
+  const container = document.getElementById('hud-search-results');
+  if (!container) return;
+
+  const q = (STATE.searchQuery || '').toLowerCase().trim();
+  const cat = STATE.searchCategory || 'ALL';
+
+  const results = STATE.events.filter(ev => {
+    if (cat !== 'ALL') {
+      const group = classifyEventCategory(ev);
+      if (group !== cat) return false;
+    }
+    if (!q) return true;
+    const t = (ev.title || '').toLowerCase();
+    const v = (ev.venue || '').toLowerCase();
+    const n = (ev.notes || '').toLowerCase();
+    return t.includes(q) || v.includes(q) || n.includes(q);
+  });
+
+  if (!results.length) {
+    container.innerHTML = `<div class="empty-state">Nessun evento o turno trovato</div>`;
+    return;
+  }
+
+  container.innerHTML = results.slice(0, 25).map(ev => {
+    const style = getHudEventStyle(ev);
+    return `
+      <div class="search-result-item" data-event-id="${ev.id}" role="button" tabindex="0">
+        <div>
+          <div style="font-weight:600;color:#FFFFFF;font-size:12.5px;">${ev.title}</div>
+          <div style="font-size:10.5px;color:rgba(232,244,255,0.6);margin-top:2px;">
+            ${formatDateTime(ev.event_start)} • ${ev.venue || 'Sede standard'}
+          </div>
+        </div>
+        <span style="font-size:13px;">${style.glyph || '🛡️'}</span>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = parseInt(item.dataset.eventId);
+      const ev = STATE.events.find(x => x.id === id);
+      if (ev) {
+        STATE.selectedDate = new Date(ev.event_start.replace(' ', 'T'));
+        closeSearchModal();
+        renderHudCalendar();
+        openBottomSheet(ev);
+      }
+    });
+  });
+}
+
+// ─── Add Event Modal Logic ──────────────────────────────────────
+function openAddEventModal() {
+  const overlay = document.getElementById('add-event-overlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  const startInput = document.getElementById('new-event-start');
+  if (startInput) {
+    const ymd = formatYMD(STATE.selectedDate);
+    startInput.value = `${ymd}T10:00`;
+  }
+}
+
+function closeAddEventModal() {
+  const overlay = document.getElementById('add-event-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+async function handleAddEventSubmit(e) {
+  e.preventDefault();
+  const title = document.getElementById('new-event-title')?.value.trim();
+  const category = document.getElementById('new-event-category')?.value || 'CUSTOM';
+  const venue = document.getElementById('new-event-venue')?.value.trim() || 'Steward';
+  const startRaw = document.getElementById('new-event-start')?.value;
+  const notes = document.getElementById('new-event-notes')?.value.trim() || 'Sub-text';
+
+  if (!title || !startRaw) return;
+
+  const eventStart = startRaw.replace('T', ' ') + ':00';
+
+  try {
+    const res = await apiPost('/api/events', {
+      title,
+      category,
+      venue,
+      event_start: eventStart,
+      notes,
+      status: 'Lavoro io',
+    });
+    showToast('Evento creato con successo!', 'success');
+    closeAddEventModal();
+    await loadEvents();
+    if (res.event) {
+      STATE.selectedDate = new Date(startRaw);
+      renderHudCalendar();
+    }
+  } catch (err) {
+    showToast('Errore durante la creazione: ' + err.message, 'error');
+  }
 }
 
 // ─── Event Listeners ────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Arc Reactor Button
+  // J.A.R.V.I.S. Top Header Capsule & Arc Reactor Buttons
+  document.getElementById('header-reactor-btn')?.addEventListener('click', toggleListening);
+  document.getElementById('header-jarvis-text-wrap')?.addEventListener('click', toggleListening);
+  document.getElementById('capsule-reactor-btn')?.addEventListener('click', toggleListening);
+  document.getElementById('capsule-text-group')?.addEventListener('click', toggleListening);
   document.getElementById('arc-reactor-btn')?.addEventListener('click', toggleListening);
 
-  // Calendar view toggle
-  document.getElementById('btn-month-view')?.addEventListener('click', () => switchCalendarView('dayGridMonth'));
-  document.getElementById('btn-list-view')?.addEventListener('click', () => switchCalendarView('listMonth'));
+  // HUD Top Navigation: Prev / Next period
+  document.getElementById('hud-nav-prev')?.addEventListener('click', () => {
+    if (STATE.currentView === 'week') {
+      STATE.selectedDate.setDate(STATE.selectedDate.getDate() - 7);
+    } else if (STATE.currentView === 'day') {
+      STATE.selectedDate.setDate(STATE.selectedDate.getDate() - 1);
+    } else if (STATE.currentView === 'month') {
+      STATE.selectedDate.setMonth(STATE.selectedDate.getMonth() - 1);
+    }
+    STATE.miniCalMonth = new Date(STATE.selectedDate.getFullYear(), STATE.selectedDate.getMonth(), 1);
+    renderHudCalendar();
+  });
+
+  document.getElementById('hud-nav-next')?.addEventListener('click', () => {
+    if (STATE.currentView === 'week') {
+      STATE.selectedDate.setDate(STATE.selectedDate.getDate() + 7);
+    } else if (STATE.currentView === 'day') {
+      STATE.selectedDate.setDate(STATE.selectedDate.getDate() + 1);
+    } else if (STATE.currentView === 'month') {
+      STATE.selectedDate.setMonth(STATE.selectedDate.getMonth() + 1);
+    }
+    STATE.miniCalMonth = new Date(STATE.selectedDate.getFullYear(), STATE.selectedDate.getMonth(), 1);
+    renderHudCalendar();
+  });
+
+  // HUD Top Navigation: Oggi (Reset a data odierna / 14 Ottobre demo)
+  document.getElementById('hud-btn-today')?.addEventListener('click', () => {
+    STATE.selectedDate = new Date('2026-10-14T09:30:00');
+    STATE.miniCalMonth = new Date('2026-10-01');
+    STATE.currentView = 'week';
+    renderHudCalendar();
+  });
+
+  // HUD View Switcher (Giorno | Settimana | Mese)
+  document.getElementById('view-pill-day')?.addEventListener('click', () => switchCalendarView('day'));
+  document.getElementById('view-pill-week')?.addEventListener('click', () => switchCalendarView('week'));
+  document.getElementById('view-pill-month')?.addEventListener('click', () => switchCalendarView('month'));
+
+  // Mini Calendar Navigation
+  document.getElementById('mini-prev-month')?.addEventListener('click', () => {
+    STATE.miniCalMonth.setMonth(STATE.miniCalMonth.getMonth() - 1);
+    renderMiniCalendar();
+  });
+  document.getElementById('mini-next-month')?.addEventListener('click', () => {
+    STATE.miniCalMonth.setMonth(STATE.miniCalMonth.getMonth() + 1);
+    renderMiniCalendar();
+  });
+
+  // Calendari Lavoro Reale Toggles
+  const filterNapoli = document.getElementById('filter-napoli');
+  const filterStabia = document.getElementById('filter-stabia');
+  const filterCasertana = document.getElementById('filter-casertana');
+  const filterMostra = document.getElementById('filter-mostra');
+  const filterCustom = document.getElementById('filter-custom');
+
+  function updateCategoryFilters() {
+    STATE.activeCategories.clear();
+    if (filterNapoli?.checked) STATE.activeCategories.add('NAPOLI');
+    if (filterStabia?.checked) STATE.activeCategories.add('STABIA');
+    if (filterCasertana?.checked) STATE.activeCategories.add('CASERTANA');
+    if (filterMostra?.checked) STATE.activeCategories.add('MOSTRA');
+    if (filterCustom?.checked) STATE.activeCategories.add('CUSTOM');
+    renderHudCalendar();
+  }
+
+  filterNapoli?.addEventListener('change', updateCategoryFilters);
+  filterStabia?.addEventListener('change', updateCategoryFilters);
+  filterCasertana?.addEventListener('change', updateCategoryFilters);
+  filterMostra?.addEventListener('change', updateCategoryFilters);
+  filterCustom?.addEventListener('change', updateCategoryFilters);
+
+  // Search Modal
+  document.getElementById('hud-btn-search')?.addEventListener('click', openSearchModal);
+  document.getElementById('btn-close-search')?.addEventListener('click', closeSearchModal);
+  document.getElementById('search-modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('search-modal-overlay')) closeSearchModal();
+  });
+
+  document.getElementById('hud-search-input')?.addEventListener('input', (e) => {
+    STATE.searchQuery = e.target.value;
+    renderSearchResults();
+  });
+
+  document.querySelectorAll('.search-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.search-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      STATE.searchCategory = pill.dataset.filter;
+      renderSearchResults();
+    });
+  });
+
+  // Settings / Phone Sync
+  document.getElementById('hud-btn-settings')?.addEventListener('click', openPhoneSyncModal);
+
+  // Add Event Modal
+  document.getElementById('btn-quick-add-event')?.addEventListener('click', openAddEventModal);
+  document.getElementById('btn-close-add-event')?.addEventListener('click', closeAddEventModal);
+  document.getElementById('btn-cancel-add')?.addEventListener('click', closeAddEventModal);
+  document.getElementById('add-event-overlay')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('add-event-overlay')) closeAddEventModal();
+  });
+  document.getElementById('add-event-form')?.addEventListener('submit', handleAddEventSubmit);
+
+  // Legacy Calendar view toggle (pill switch fallback)
+  document.getElementById('btn-month-view')?.addEventListener('click', () => switchCalendarView('month'));
+  document.getElementById('btn-list-view')?.addEventListener('click', () => switchCalendarView('week'));
 
   // Bottom Nav
   document.querySelectorAll('.nav-tab').forEach(btn => {
@@ -893,7 +1782,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dy > 60) closeBottomSheet();
   }, { passive: true });
 
-  // Prevent scroll propagation on bottom sheet
   sheet?.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
 
   // Start app
@@ -916,12 +1804,9 @@ function openPhoneSyncModal() {
     directBtn.href = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(directWebcal)}`;
   }
 
-  // Check iOS for Safari hint
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const iosHint = document.getElementById('ios-install-hint');
-  if (iosHint && isIOS) {
-    iosHint.style.display = 'block';
-  }
+  if (iosHint && isIOS) iosHint.style.display = 'block';
 
   overlay.classList.add('open');
   overlay.setAttribute('aria-hidden', 'false');
@@ -944,4 +1829,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 // ─── Expose globals for debugging ───────────────────────────────
-window.STEWARD = { STATE, loadEvents, triggerSync, jarvisSpeak, openPhoneSyncModal };
+window.STEWARD = {
+  STATE,
+  loadEvents,
+  triggerSync,
+  jarvisSpeak,
+  openPhoneSyncModal,
+  cleanJarvisSpeechText,   // Esposto per test rapido
+  isFootballMatch,          // Esposto per debug logica partite
+};

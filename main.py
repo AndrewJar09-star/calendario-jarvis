@@ -138,6 +138,15 @@ def root():
     }
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Serve favicon.ico directly from static directory."""
+    fav_file = STATIC_DIR / "favicon.ico"
+    if fav_file.exists():
+        return FileResponse(fav_file, media_type="image/x-icon")
+    return Response(status_code=404)
+
+
 def generate_ical_feed() -> str:
     """
     Genera un feed standard iCalendar (RFC 5545) contenente tutti i turni presenti nel database.
