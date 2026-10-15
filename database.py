@@ -264,11 +264,12 @@ def get_alerts() -> Dict[str, Any]:
     }
 
 
-def insert_or_update_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
+def insert_or_update_event(event_data: Dict[str, Any], force_insert: bool = False) -> Dict[str, Any]:
     """
     Inserisce o aggiorna un evento applicando:
     - Calcolo automatico call_time (CALCIO -> -4h, FIERA -> 08:30)
     - Rilevazione cambio orario rispetto al DB (updated_flag)
+    - Se force_insert=True, inserisce sempre un nuovo record senza sovrascrivere eventi esistenti
     """
     init_db()
     conn = get_db_connection()
@@ -289,38 +290,39 @@ def insert_or_update_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
         updated_flag = 0
         existing = None
 
-        if event_id:
-            cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
-            existing = cursor.fetchone()
-        elif category == "CALCIO" and title and venue:
-            cursor.execute(
-                "SELECT * FROM events WHERE title = ? AND venue = ? ORDER BY id DESC LIMIT 1",
-                (title, venue)
-            )
-            existing = cursor.fetchone()
-            if existing:
-                event_id = existing["id"]
-        elif title and venue and event_start:
-            cursor.execute(
-                "SELECT * FROM events WHERE title = ? AND venue = ? ORDER BY id DESC",
-                (title, venue)
-            )
-            rows = cursor.fetchall()
-            try:
-                target_dt = parse_datetime(event_start)
-                for r in rows:
-                    try:
-                        r_dt = parse_datetime(r["event_start"])
-                        if abs((r_dt.date() - target_dt.date()).days) <= 3:
-                            existing = r
-                            event_id = r["id"]
-                            break
-                    except Exception:
-                        continue
-            except Exception:
-                if rows:
-                    existing = rows[0]
+        if not force_insert:
+            if event_id:
+                cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
+                existing = cursor.fetchone()
+            elif category == "CALCIO" and title and venue:
+                cursor.execute(
+                    "SELECT * FROM events WHERE title = ? AND venue = ? ORDER BY id DESC LIMIT 1",
+                    (title, venue)
+                )
+                existing = cursor.fetchone()
+                if existing:
                     event_id = existing["id"]
+            elif title and venue and event_start:
+                cursor.execute(
+                    "SELECT * FROM events WHERE title = ? AND venue = ? ORDER BY id DESC",
+                    (title, venue)
+                )
+                rows = cursor.fetchall()
+                try:
+                    target_dt = parse_datetime(event_start)
+                    for r in rows:
+                        try:
+                            r_dt = parse_datetime(r["event_start"])
+                            if abs((r_dt.date() - target_dt.date()).days) <= 3:
+                                existing = r
+                                event_id = r["id"]
+                                break
+                        except Exception:
+                            continue
+                except Exception:
+                    if rows:
+                        existing = rows[0]
+                        event_id = existing["id"]
 
         if existing:
             # Preserva lo stato utente se diverso dal default 'Da confermare'

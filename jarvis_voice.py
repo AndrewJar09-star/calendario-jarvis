@@ -22,6 +22,7 @@ import asyncio
 import threading
 import logging
 from pathlib import Path
+from datetime import datetime, timedelta, time as dtime
 from typing import Optional, Tuple, Dict, Any
 
 import numpy as np
@@ -29,6 +30,14 @@ import scipy.signal
 import scipy.io.wavfile
 import edge_tts
 import pygame
+
+from database import (
+    get_all_events_with_conflicts,
+    insert_or_update_event,
+    delete_event,
+    update_event_status,
+    calculate_call_time,
+)
 
 logger = logging.getLogger("jarvis_voice")
 logging.basicConfig(level=logging.INFO)
@@ -253,11 +262,232 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
     sottile ironia britannica e dizione formattata per la sintesi vocale).
     Ritorna una tupla (testo_risposta, evento_correlato_opzionale).
     """
+# =====================================================================
+# MODULO NLP: PARSER DATE, ORARI, COMPENSI & AZIONI DIRETTE
+# =====================================================================
+
+ITALIAN_MONTHS = {
+    "gennaio": 1, "gen": 1,
+    "febbraio": 2, "feb": 2,
+    "marzo": 3, "mar": 3,
+    "aprile": 4, "apr": 4,
+    "maggio": 5, "mag": 5,
+    "giugno": 6, "giu": 6,
+    "luglio": 7, "lug": 7,
+    "agosto": 8, "ago": 8,
+    "settembre": 9, "set": 9, "sett": 9,
+    "ottobre": 10, "ott": 10,
+    "novembre": 11, "nov": 11,
+    "dicembre": 12, "dic": 12
+}
+
+WORD_NUMBERS = {
+    "primo": 1, "uno": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6,
+    "sette": 7, "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12,
+    "tredici": 13, "quattordici": 14, "quindici": 15, "sedici": 16, "diciassette": 17,
+    "diciotto": 18, "diciannove": 19, "venti": 20, "ventuno": 21, "ventidue": 22,
+    "ventitre": 23, "ventitré": 23, "ventiquattro": 24, "venticinque": 25,
+    "ventisei": 26, "ventisette": 27, "ventotto": 28, "ventinove": 29, "trenta": 30, "trentuno": 31
+}
+
+def parse_italian_date(text: str) -> Tuple[Optional[datetime], Optional[str], Optional[str]]:
+    t = text.lower()
+    today = datetime.now()
+    default_year = 2026
+
+    # 1. Parole chiave relative
+    if "dopodomani" in t:
+        d = today + timedelta(days=2)
+        return d, d.strftime("%Y-%m-%d"), "dopodomani"
+    elif "domani" in t:
+        d = today + timedelta(days=1)
+        return d, d.strftime("%Y-%m-%d"), "domani"
+    elif "oggi" in t:
+        return today, today.strftime("%Y-%m-%d"), "oggi"
+
+    # 2. Formato esplicito: "18 ottobre" / "diciotto ottobre" / "il 18 di ottobre"
+    month_pattern = "|".join(ITALIAN_MONTHS.keys())
+    num_pattern = r"\d{1,2}|" + "|".join(WORD_NUMBERS.keys())
+    m = re.search(rf"\b(?:il\s+|del\s+)?({num_pattern})\s+(?:di\s+)?({month_pattern})(?:\s+(?:del\s+)?(\d{{4}}))?\b", t)
+    if m:
+        day_raw = m.group(1)
+        month_raw = m.group(2)
+        year_raw = m.group(3)
+
+        day = int(day_raw) if day_raw.isdigit() else WORD_NUMBERS.get(day_raw, 1)
+        month = ITALIAN_MONTHS.get(month_raw, 10)
+        year = int(year_raw) if year_raw else default_year
+
+        try:
+            dt = datetime(year, month, day)
+            return dt, dt.strftime("%Y-%m-%d"), f"{day} {month_raw}"
+        except Exception:
+            pass
+
+    # 3. Formato numerico "18/10" o "18-10"
+    m_num = re.search(r"\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b", t)
+    if m_num:
+        day = int(m_num.group(1))
+        month = int(m_num.group(2))
+        year = int(m_num.group(3)) if m_num.group(3) else default_year
+        if year < 100: year += 2000
+        try:
+            dt = datetime(year, month, day)
+            return dt, dt.strftime("%Y-%m-%d"), f"{day}/{month}"
+        except Exception:
+            pass
+
+    return None, None, None
+
+def parse_italian_time(text: str) -> Tuple[str, str]:
+    t = text.lower()
+    # "alle 15:30" / "ore 16.45"
+    m1 = re.search(r"\b(?:alle\s+(?:ore\s+)?|ore\s+)(\d{1,2})[:.](\d{2})\b", t)
+    if m1:
+        h, m = int(m1.group(1)), int(m1.group(2))
+        return f"{h:02d}:{m:02d}:00", f"ore {h} e {m}"
+    # "alle 15 e mezza" / "ore 9 e mezza"
+    m2 = re.search(r"\b(?:alle\s+(?:ore\s+)?|ore\s+)(\d{1,2})\s+e\s+(?:mezza|mezzo|trenta)\b", t)
+    if m2:
+        h = int(m2.group(1))
+        return f"{h:02d}:30:00", f"ore {h} e trenta"
+    # "alle 20 e 45"
+    m3 = re.search(r"\b(?:alle\s+(?:ore\s+)?|ore\s+)(\d{1,2})\s+e\s+(\d{1,2})\b", t)
+    if m3:
+        h, m = int(m3.group(1)), int(m3.group(2))
+        return f"{h:02d}:{m:02d}:00", f"ore {h} e {m}"
+    # "alle 16" / "ore 15"
+    m4 = re.search(r"\b(?:alle\s+(?:ore\s+)?|ore\s+)(\d{1,2})\b", t)
+    if m4:
+        h = int(m4.group(1))
+        return f"{h:02d}:00:00", f"ore {h}"
+    return "09:00:00", "ore nove"
+
+def parse_italian_earnings(text: str) -> Optional[float]:
+    t = text.lower()
+    m1 = re.search(r"(?:paga|compenso|guadagno|tariffa)(?:\s+(?:di|a|pari\s+a))?\s*(\d+(?:[.,]\d+)?)\s*(?:euro|€)?", t)
+    if m1:
+        return float(m1.group(1).replace(",", "."))
+    m2 = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:euro|€)\s+(?:di\s+)?(?:paga|compenso|guadagno)", t)
+    if m2:
+        return float(m2.group(1).replace(",", "."))
+    m3 = re.search(r"\b(?:con\s+)?(\d+(?:[.,]\d+)?)\s*(?:euro|€)\b", t)
+    if m3:
+        return float(m3.group(1).replace(",", "."))
+    return None
+
+def extract_event_title(cmd: str, date_raw: Optional[str] = None) -> str:
+    """
+    Estrae il titolo pulito dell'evento dal comando utente,
+    rimuovendo verbi, preposizioni, orari, date e clausole accessorie
+    (es. 'anche se ho messo riposo', 'dove c'è lavoro', 'con stato lavoro io').
+    """
+    t = cmd.lower()
+    t = re.sub(r'^(?:ehi\s+)?jarvis[,:\s]*', '', t).strip()
+
+    # Rimuove clausole contestuali su altri eventi o stati preesistenti
+    t = re.sub(r'\b(?:anche\s+se\s+ci\s+sono\s+(?:già\s+)?altri\s+eventi)\b', '', t).strip()
+    t = re.sub(r'\b(?:anche\s+se\s+c\'è\s+(?:già\s+)?(?:un\s+altro\s+evento|riposo|lavoro\s+io|lavoro|ignora))\b', '', t).strip()
+    t = re.sub(r'\b(?:anche\s+se\s+ho\s+(?:già\s+)?(?:messo|selezionato|impostato)?\s*(?:riposo|lavoro\s+io|lavoro|ignora))\b', '', t).strip()
+    t = re.sub(r'\b(?:anche\s+se\s+sono\s+(?:a|in)\s+riposo)\b', '', t).strip()
+    t = re.sub(r'\b(?:anche\s+se\s+(?:è|e)\s+riposo)\b', '', t).strip()
+    t = re.sub(r'\b(?:dove\s+ho\s+(?:già\s+)?(?:messo|selezionato|impostato)?\s*(?:riposo|lavoro\s+io|lavoro|ignora))\b', '', t).strip()
+    t = re.sub(r'\b(?:dove\s+c\'è\s+(?:già\s+)?(?:riposo|lavoro\s+io|lavoro))\b', '', t).strip()
+    t = re.sub(r'\b(?:in\s+giornata|nella\s+stessa\s+giornata|nello\s+stesso\s+giorno)\b', '', t).strip()
+    t = re.sub(r'\b(?:con\s+stato\s+(?:lavoro\s+io|lavoro|riposo|ignora))\b', '', t).strip()
+    t = re.sub(r'\b(?:stato\s+(?:lavoro\s+io|lavoro|riposo|ignora))\b', '', t).strip()
+
+    t = re.sub(r'\b(?:inserisci|aggiungi|crea|registra|segna|fissa|metti in calendario|metti in agenda|metti|programma|pianifica)\b', '', t).strip()
+    t = re.sub(r'\b(?:un|una|uno|il|lo|la|l\'|i|gli|le)\b', '', t).strip()
+    t = re.sub(r'\b(?:evento|appuntamento|impegno|turno|servizio|partita)\b', '', t).strip()
+    t = re.sub(r'\b(?:personale|privato)\b', '', t).strip()
+    t = re.sub(r'(?:con\s+)?(?:paga|compenso|guadagno|tariffa)(?:\s+(?:di|a|pari\s+a))?\s*\d+(?:[.,]\d+)?\s*(?:euro|€)?', '', t).strip()
+    t = re.sub(r'\b\d+(?:[.,]\d+)?\s*(?:euro|€)(?:\s+di\s+(?:paga|compenso|guadagno))?\b', '', t).strip()
+    t = re.sub(r'\b(?:alle\s+(?:ore\s+)?|ore\s+)\d{1,2}(?:[:.]\d{2}|\s+e\s+(?:mezza|mezzo|trenta|\d{1,2}))?\b', '', t).strip()
+    if date_raw:
+        t = re.sub(rf'\b(?:il\s+|del\s+|per\s+il\s+|per\s+)?{re.escape(date_raw)}\b', '', t, flags=re.IGNORECASE).strip()
+    t = re.sub(r'\b(?:oggi|domani|dopodomani)\b', '', t).strip()
+    t = re.sub(r'^(?:per\s+il|per|il|del|della|di|a|alle|in|presso)\s+', '', t).strip()
+    t = re.sub(r'\s+(?:per\s+il|per|il|del|della|di|a|alle|in|presso)$', '', t).strip()
+    t = re.sub(r'[^\w\s\'-]', '', t).strip()
+    if not t:
+        return "Impegno Personale"
+    return t.strip().capitalize()
+
+
+def find_best_matching_event(target_text: str, events: list, date_iso: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Individua intelligentemente l'evento più probabile tramite token overlap,
+    parole chiave distintive e data ISO di riferimento, ignorando parole grammaticali.
+    """
+    stop_words = {
+        "il", "lo", "la", "i", "gli", "le", "l", "un", "uno", "una", "di", "a", "da", "in", "con",
+        "su", "per", "tra", "fra", "del", "dello", "della", "dei", "degli", "delle", "al", "allo",
+        "alla", "ai", "agli", "alle", "evento", "turno", "partita", "appuntamento", "chiamata",
+        "servizio", "jarvis", "ehi", "signore", "perché", "come", "stato", "metti", "imposta",
+        "seleziona", "segna", "conferma", "confermo", "elimina", "cancella", "rimuovi", "disdici",
+        "annulla", "lavoro", "riposo", "ignora", "paga", "euro", "compenso"
+    }
+
+    target_clean = re.sub(r'[^\w\s]', ' ', (target_text or "").lower())
+    target_tokens = [w for w in target_clean.split() if len(w) > 1 and w not in stop_words]
+
+    pool = events
+    if date_iso:
+        day_events = [e for e in events if (e.get("event_start") or "").startswith(date_iso)]
+        if day_events:
+            if not target_tokens:
+                return day_events[0]
+            pool = day_events
+
+    if not target_tokens:
+        if date_iso and pool:
+            return pool[0]
+        return None
+
+    # 1. Corrispondenza sottostringa
+    joined_target = " ".join(target_tokens)
+    for e in pool:
+        t = (e.get("title") or "").lower()
+        if joined_target in t or target_clean.strip() in t:
+            return e
+
+    # 2. Corrispondenza fuzzy / token scoring
+    best_event = None
+    best_score = 0
+
+    for e in pool:
+        t = (e.get("title") or "").lower()
+        t_tokens = set(re.sub(r'[^\w\s]', ' ', t).split())
+        score = 0
+        for tok in target_tokens:
+            if tok in t_tokens:
+                score += 3
+            elif any(tok in t_tok or t_tok in tok for t_tok in t_tokens if len(t_tok) >= 3):
+                score += 1
+
+        if score > best_score:
+            best_score = score
+            best_event = e
+
+    if best_score > 0:
+        return best_event
+
+    return None
+
+
+def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[str, Any]], Optional[str]]:
+    """
+    Interpreta un comando vocale o testuale in linguaggio naturale e restituisce
+    la risposta ideale in perfetto stile J.A.R.V.I.S. (con 'Signore', tono calmo,
+    sottile ironia britannica e dizione formattata per la sintesi vocale).
+    Ritorna una tupla: (testo_risposta, evento_correlato_opzionale, azione_eseguita_opzionale).
+    """
     if not cmd:
-        return JarvisResponses.boot_greeting(), None
+        return JarvisResponses.boot_greeting(), None, None
 
     cmd_lower = cmd.lower().strip()
-    from datetime import datetime
+    cmd_clean = re.sub(r'^(?:ehi\s+)?jarvis[,:\s]*', '', cmd_lower).strip()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Filtra eventi futuri ordinati cronologicamente
@@ -296,18 +526,226 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         except Exception:
             return dt_str
 
-    # 1. Prossimo Turno
+    # ═════════════════════════════════════════════════════════════════
+    # 1. INSERIMENTO EVENTO PERSONALE / TURNO CON EVENTUALE PAGA
+    # ═════════════════════════════════════════════════════════════════
+    is_add_cmd = (
+        any(k in cmd_clean for k in [
+            "inserisci", "aggiungi", "crea", "registra", "segna", "fissa",
+            "metti in calendario", "metti in agenda", "programma", "pianifica"
+        ])
+        or (cmd_clean.startswith("metti ") and any(w in cmd_clean for w in ["turno", "evento", "partita", "appuntamento", "chiamata", "impegno", "servizio"]))
+    )
+    is_delete_cmd = any(k in cmd_clean for k in ["elimina", "cancella", "rimuovi", "disdici", "annulla"])
+
+    if is_add_cmd and not is_delete_cmd:
+        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+        time_iso, time_verbal = parse_italian_time(cmd_clean)
+        earnings = parse_italian_earnings(cmd_clean)
+        title = extract_event_title(cmd_clean, date_raw)
+
+        if not date_iso:
+            date_iso = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        event_start = f"{date_iso} {time_iso}"
+
+        # Riconoscimento Categoria & Venue intelligente
+        cat = "CUSTOM"
+        venue = ""
+        title_lower = title.lower()
+        if any(k in title_lower for k in ["mostra", "fiera", "expo", "salone", "convegno"]):
+            cat = "FIERA"
+            venue = "Mostra d'Oltremare"
+        elif any(k in title_lower for k in ["partita", "calcio", "napoli", "maradona"]):
+            cat = "CALCIO"
+            venue = "Stadio Diego Armando Maradona"
+        elif any(k in title_lower for k in ["stabia", "menti"]):
+            cat = "CALCIO"
+            venue = "Stadio Romeo Menti"
+        elif any(k in title_lower for k in ["casertana", "pinto"]):
+            cat = "CALCIO"
+            venue = "Stadio Alberto Pinto"
+        elif "dentista" in title_lower:
+            venue = "Studio Dentistico"
+        elif any(k in title_lower for k in ["visita", "dottore", "medico", "clinica"]):
+            venue = "Studio Medico"
+
+        call_time = calculate_call_time(cat, event_start)
+
+        # Determina stato richiesto per il nuovo evento
+        new_status = "Lavoro io"
+        if re.search(r'\b(?:con\s+stato|stato|come)\s+(?:riposo|ignora)\b', cmd_clean):
+            new_status = "Riposo"
+
+        new_event_dict = {
+            "title": title,
+            "venue": venue,
+            "category": cat,
+            "event_start": event_start,
+            "call_time": call_time,
+            "status": new_status,
+            "earnings": earnings,
+            "notes": "Aggiunto su richiesta vocale J.A.R.V.I.S."
+        }
+
+        # Inserimento garantito anche se vi sono già eventi in giornata
+        saved = insert_or_update_event(new_event_dict, force_insert=True)
+        date_txt = _fmt_date(event_start)
+        time_txt = _fmt_time(event_start)
+        earnings_txt = f", con un compenso previsto di {int(earnings)} euro" if earnings is not None else ""
+        status_txt = f" con stato '{new_status}'" if new_status == "Riposo" else ""
+
+        existing_day_events = [e for e in events if (e.get("event_start") or "").startswith(date_iso)]
+        if existing_day_events:
+            other_names = [e.get('title') for e in existing_day_events[:2] if e.get('title')]
+            other_txt = f" (in concomitanza con {', '.join(other_names)})" if other_names else ""
+            coexist_txt = f" L'evento è stato aggiunto regolarmente nel suo calendario{other_txt}, affiancandosi agli impegni già registrati per quella data."
+        else:
+            coexist_txt = " La sua agenda operativa è stata aggiornata con successo."
+
+        reply = (
+            f"Certamente signore, ho registrato l'appuntamento {title} per il {date_txt} alle {time_txt}"
+            f"{earnings_txt}{status_txt}.{coexist_txt}"
+        )
+        return reply, saved, "created"
+
+    # ═════════════════════════════════════════════════════════════════
+    # 2. ELIMINAZIONE / CANCELLAZIONE EVENTI
+    # ═════════════════════════════════════════════════════════════════
+    if any(k in cmd_clean for k in ["elimina", "cancella", "rimuovi", "disdici", "annulla"]):
+        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+        clean_target = re.sub(r'\b(?:elimina|cancella|rimuovi|disdici|annulla|l\'|il|la|lo|i|gli|le|evento|appuntamento|turno|partita|del|della|di|jarvis)\b', '', cmd_clean).strip()
+        if date_raw:
+            clean_target = re.sub(rf'\b(?:il\s+|del\s+)?{re.escape(date_raw)}\b', '', clean_target, flags=re.IGNORECASE).strip()
+        clean_target = clean_target.strip()
+
+        match = find_best_matching_event(clean_target, events, date_iso=date_iso)
+        if match:
+            delete_event(match["id"])
+            reply = f"Ho provveduto a cancellare definitivamente {match['title']} dal suo calendario, signore. L'evento è stato rimosso dalla sua agenda."
+            return reply, match, "deleted"
+
+        return "Non ho individuato alcun evento corrispondente alla sua richiesta di cancellazione, signore.", None, None
+
+    # ═════════════════════════════════════════════════════════════════
+    # 3. SELEZIONE STATO "LAVORO IO" O "RIPOSO"
+    # ═════════════════════════════════════════════════════════════════
+    if any(k in cmd_clean for k in ["lavoro io", "riposo", "ignora", "stato lavoro", "stato riposo", "imposta lavoro", "imposta riposo", "seleziona lavoro", "seleziona riposo", "metti lavoro", "metti riposo", "segna riposo", "segna lavoro", "confermo lavoro", "conferma lavoro"]):
+        new_status = "Lavoro io" if "lavoro" in cmd_clean else "Riposo"
+        earnings = parse_italian_earnings(cmd_clean)
+        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+        clean_target = re.sub(r'\b(?:seleziona|imposta|metti|segna|conferma|confermo|stato|lavoro\s+io|lavoro|riposo|ignora|come|per|il|la|l\'|lo|del|della|di|paga|euro|\d+|jarvis)\b', '', cmd_clean).strip()
+        if date_raw:
+            clean_target = re.sub(rf'\b(?:il\s+|del\s+)?{re.escape(date_raw)}\b', '', clean_target, flags=re.IGNORECASE).strip()
+        clean_target = clean_target.strip()
+
+        match = find_best_matching_event(clean_target, events, date_iso=date_iso)
+        if not match and not clean_target:
+            match = future_events[0] if future_events else (events[0] if events else None)
+
+        if match:
+            updated = update_event_status(match["id"], new_status, earnings)
+            if new_status == "Lavoro io":
+                earn_txt = f" con un compenso di {int(earnings)} euro" if earnings is not None else ""
+                reply = f"Certamente signore. Ho impostato lo stato di {match['title']} su 'Lavoro io'{earn_txt}. Il turno è confermato nel suo calendario."
+            else:
+                reply = f"Molto bene signore. Ho impostato lo stato di {match['title']} su 'Riposo'. L'evento è stato reso invisibile sul calendario principale, ma rimarrà conservato nella sezione turni qualora decidesse di cambiare idea."
+            return reply, updated or match, "status_updated"
+
+        return "Non ho individuato l'evento per il quale desidera modificare lo stato, signore.", None, None
+
+    # ═════════════════════════════════════════════════════════════════
+    # 4. LETTURA CALENDARIO PER DATA SPECIFICA ("Ho qualcosa il 18 ottobre?")
+    # ═════════════════════════════════════════════════════════════════
+    date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+    is_date_query = date_iso is not None and (
+        any(k in cmd_clean for k in ["ho qualcosa", "cosa ho", "cosa c'è", "cosa ce", "sono libero", "è libera", "e libera", "libera", "libero", "impegni", "impegno", "turni", "turno", "agenda", "calendario", "quando", "c'è qualcosa", "ce qualcosa", "lavoro"]) or len(cmd_clean.split()) <= 4
+    )
+
+    if is_date_query:
+        day_events = [e for e in events if e.get("event_start", "").startswith(date_iso)]
+        date_txt = _fmt_date(date_iso + " 00:00:00")
+
+        if not day_events:
+            reply = f"No signore, la giornata del {date_txt} risulta completamente libera da impegni in calendario. Nessun turno previsto, può godersi il suo meritato riposo."
+            return reply, {"event_start": f"{date_iso} 09:00:00", "title": f"Giornata Libera ({date_txt})"}, "view_date"
+
+        elif len(day_events) == 1:
+            ev = day_events[0]
+            title_clean = ev["title"].replace("vs", "contro")
+            time_txt = _fmt_time(ev["event_start"])
+            venue = ev.get("venue")
+            venue_txt = f" presso {venue}" if venue else ""
+            call_time = ev.get("call_time")
+            call_txt = f". La convocazione è fissata per le {_fmt_time(call_time)}" if call_time else ""
+            earnings = ev.get("earnings")
+            earnings_txt = f", con un compenso previsto di {int(earnings)} euro" if earnings is not None else ""
+            status = (ev.get("status") or "").lower()
+
+            if "riposo" in status:
+                reply = (
+                    f"Il {date_txt} in calendario compare {title_clean} alle {time_txt}{venue_txt}, "
+                    f"ma avendolo contrassegnato come Riposo, non effettuerà questo turno. "
+                    f"La sua giornata rimane quindi a sua totale disposizione per altri impegni o attività personali, signore."
+                )
+            elif "lavoro" in status:
+                reply = f"Sì signore, il {date_txt} ha confermato il servizio per {title_clean} alle {time_txt}{venue_txt}{call_txt}{earnings_txt}."
+            else:
+                reply = f"Sì signore, il {date_txt} ha in programma {title_clean} alle {time_txt}{venue_txt}{call_txt}{earnings_txt}."
+            return reply, ev, "view_date"
+
+        else:
+            active_work = [e for e in day_events if "riposo" not in (e.get("status") or "").lower()]
+            rest_events = [e for e in day_events if "riposo" in (e.get("status") or "").lower()]
+
+            parts = []
+            for e in day_events:
+                t_clean = e["title"].replace("vs", "contro")
+                t_time = _fmt_time(e["event_start"])
+                st = (e.get("status") or "").lower()
+                e_earn = f", compenso {int(e['earnings'])} euro" if e.get("earnings") else ""
+
+                if "riposo" in st:
+                    parts.append(f"{t_clean} alle {t_time} (impostato su Riposo/ignora)")
+                elif "lavoro" in st:
+                    parts.append(f"{t_clean} alle {t_time} (Lavoro io{e_earn})")
+                else:
+                    parts.append(f"{t_clean} alle {t_time}{e_earn}")
+
+            details = "; ".join(parts)
+
+            if active_work and rest_events:
+                reply = (
+                    f"Sì signore, per il {date_txt} risultano {len(day_events)} appuntamenti: {details}. "
+                    f"Risulta operativo per i turni confermati, mentre l'evento a riposo lascia spazio ai suoi programmi personali, signore."
+                )
+            elif active_work:
+                reply = f"Sì signore, per il {date_txt} ha in programma {len(day_events)} impegni: {details}. Una giornata decisamente intensa, signore."
+            else:
+                reply = (
+                    f"Per il {date_txt} in calendario figurano {len(day_events)} appuntamenti: {details}. "
+                    f"Avendo contrassegnato tali impegni come Riposo/ignora, non effettuerà questi servizi e la sua giornata è libera da obblighi operativi, signore."
+                )
+
+            focus_ev = active_work[0] if active_work else day_events[0]
+            return reply, focus_ev, "view_date"
+
+    # ═════════════════════════════════════════════════════════════════
+    # 5. QUERY GENERALI PREDEFINITE
+    # ═════════════════════════════════════════════════════════════════
+
+    # 5.1 Prossimo Turno
     if any(k in cmd_lower for k in ["prossimo turno", "quando lavoro", "prossimo servizio", "mio turno", "primo turno"]):
         if not future_events:
-            return JarvisResponses.empty_schedule(), None
+            return JarvisResponses.empty_schedule(), None, None
         next_ev = future_events[0]
         date_txt = _fmt_date(next_ev["event_start"])
         time_txt = _fmt_time(next_ev["event_start"])
         call_txt = _fmt_time(next_ev["call_time"])
         venue_txt = next_ev.get("venue") or "Sede designata"
-        return JarvisResponses.next_shift(next_ev["title"], date_txt, time_txt, call_txt, venue_txt), next_ev
+        return JarvisResponses.next_shift(next_ev["title"], date_txt, time_txt, call_txt, venue_txt), next_ev, "view_date"
 
-    # 2. Partite SSC Napoli allo Stadio Maradona
+    # 5.2 Partite SSC Napoli allo Stadio Maradona
     if "napoli" in cmd_lower or "maradona" in cmd_lower:
         napoli_matches = [
             e for e in future_events
@@ -317,7 +755,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             and "expo" not in (e.get("title") or "").lower()
         ]
         if not napoli_matches:
-            return "Non risultano partite del Napoli al Maradona programmate per il periodo a venire, signore.", None
+            return "Non risultano partite del Napoli al Maradona programmate per il periodo a venire, signore.", None, None
         ev = napoli_matches[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -326,16 +764,16 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         return (
             f"La prossima gara del Napoli al Maradona è {title_clean}, in calendario il {date_txt} alle {time_txt}. "
             f"La convocazione per il servizio steward è fissata per le {call_txt}, signore."
-        ), ev
+        ), ev, "view_date"
 
-    # 3. Juve Stabia (Stadio Romeo Menti)
+    # 5.3 Juve Stabia (Stadio Romeo Menti)
     if "stabia" in cmd_lower or "menti" in cmd_lower:
         stabia_matches = [
             e for e in future_events
             if "menti" in (e.get("venue") or "").lower() or "stabia" in (e.get("title") or "").lower()
         ]
         if not stabia_matches:
-            return "Nessuna gara della Juve Stabia al Romeo Menti rilevata nei prossimi giorni, signore.", None
+            return "Nessuna gara della Juve Stabia al Romeo Menti rilevata nei prossimi giorni, signore.", None, None
         ev = stabia_matches[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -344,16 +782,16 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         return (
             f"La prossima gara della Juve Stabia al Romeo Menti è {title_clean}, il {date_txt} alle {time_txt}. "
             f"La convocazione steward è alle {call_txt}, signore."
-        ), ev
+        ), ev, "view_date"
 
-    # 4. Casertana FC (Stadio Alberto Pinto)
+    # 5.4 Casertana FC (Stadio Alberto Pinto)
     if "casertana" in cmd_lower or "pinto" in cmd_lower:
         casertana_matches = [
             e for e in future_events
             if "pinto" in (e.get("venue") or "").lower() or "casertana" in (e.get("title") or "").lower()
         ]
         if not casertana_matches:
-            return "Nessun incontro della Casertana allo stadio Pinto rilevato in calendario, signore.", None
+            return "Nessun incontro della Casertana allo stadio Pinto rilevato in calendario, signore.", None, None
         ev = casertana_matches[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -362,16 +800,16 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         return (
             f"La prossima gara della Casertana allo stadio Pinto è {title_clean}, il {date_txt} alle {time_txt}. "
             f"La convocazione è programmata per le {call_txt}, signore."
-        ), ev
+        ), ev, "view_date"
 
-    # 5. Mostra d'Oltremare / Fiere
+    # 5.5 Mostra d'Oltremare / Fiere
     if "mostra" in cmd_lower or "fiera" in cmd_lower or "oltremare" in cmd_lower or "expo" in cmd_lower:
         mostra_events = [
             e for e in future_events
             if "mostra" in (e.get("venue") or "").lower() or (e.get("category") or "").upper() == "FIERA"
         ]
         if not mostra_events:
-            return "Non risultano fiere o manifestazioni alla Mostra d'Oltremare nel breve periodo, signore.", None
+            return "Non risultano fiere o manifestazioni alla Mostra d'Oltremare nel breve periodo, signore.", None, None
         ev = mostra_events[0]
         date_txt = _fmt_date(ev["event_start"])
         time_txt = _fmt_time(ev["event_start"])
@@ -379,46 +817,37 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         return (
             f"Il prossimo appuntamento alla Mostra d'Oltremare è {ev['title']}, previsto per il {date_txt} alle {time_txt}. "
             f"La convocazione generale è fissata per le {call_txt}, signore."
-        ), ev
+        ), ev, "view_date"
 
-    # 6. Conflitti / Sovrapposizioni
+    # 5.6 Conflitti / Sovrapposizioni
     if any(k in cmd_lower for k in ["conflitt", "sovrapposiz", "coincidenz", "doppio"]):
         conflicts = [e for e in events if e.get("conflict")]
         if not conflicts:
-            return "Nessuna sovrapposizione o conflitto rilevato, signore. Tutti i turni sono perfettamente scaglionati.", None
-        return JarvisResponses.crowded_schedule(len(future_events), len(conflicts)), None
+            return "Nessuna sovrapposizione o conflitto rilevato, signore. Tutti i turni sono perfettamente scaglionati.", None, None
+        return JarvisResponses.crowded_schedule(len(future_events), len(conflicts)), None, None
 
-    # 7. Quanti eventi / Conteggio turni
+    # 5.7 Quanti eventi / Conteggio turni
     if any(k in cmd_lower for k in ["quanti eventi", "quanti turni", "conteggio", "agenda"]):
         if not future_events:
-            return JarvisResponses.empty_schedule(), None
-        return JarvisResponses.crowded_schedule(len(future_events), 0), None
+            return JarvisResponses.empty_schedule(), None, None
+        return JarvisResponses.crowded_schedule(len(future_events), 0), None, None
 
-    # 8. Sincronizzazione / Aggiornamento
+    # 5.8 Sincronizzazione / Aggiornamento
     if any(k in cmd_lower for k in ["sincronizza", "aggiorna", "sync", "scarica turni"]):
-        return "Avvio la procedura di sincronizzazione dei calendari di lavoro, signore. Tutti i dati verranno allineati.", None
+        return "Avvio la procedura di sincronizzazione dei calendari di lavoro, signore. Tutti i dati verranno allineati.", None, None
 
-    # 9. Google Calendar
+    # 5.9 Google Calendar
     if "google" in cmd_lower or "calendar" in cmd_lower or "collega" in cmd_lower:
         if future_events:
-            return JarvisResponses.gcal_export(future_events[0]["title"]), future_events[0]
-        return "I canali di sincronizzazione con Google Calendar e smartphone sono pienamente operativi, signore.", None
+            return JarvisResponses.gcal_export(future_events[0]["title"]), future_events[0], "view_date"
+        return "I canali di sincronizzazione con Google Calendar e smartphone sono pienamente operativi, signore.", None, None
 
-    # 10. Saluti e stato di sistema
+    # 5.10 Saluti e stato di sistema
     if any(k in cmd_lower for k in ["buongiorno", "buonasera", "ciao", "come stai", "chi sei", "stato sistemi"]):
-        return JarvisResponses.boot_greeting(), None
-
-    # 11. Eliminazione eventi
-    if any(k in cmd_lower for k in ["elimina", "cancella", "rimuovi"]):
-        clean_target = re.sub(r'elimina|cancella|rimuovi|evento|appuntamento|il|la|turno', '', cmd_lower).strip()
-        if len(clean_target) >= 2:
-            match = next((e for e in events if clean_target in (e.get("title") or "").lower()), None)
-            if match:
-                return f"Ho individuato {match['title']}, signore. Può confermare l'eliminazione con un tocco dal pannello dettagli.", match
-        return "Quale appuntamento desidera che rimuova dal suo calendario, signore?", None
+        return JarvisResponses.boot_greeting(), None, None
 
     # Default imperturbabile
-    return JarvisResponses.unknown_query(), None
+    return JarvisResponses.unknown_query(), None, None
 
 
 
@@ -594,7 +1023,7 @@ def prewarm_jarvis_cache(events: list = None):
 
     for q in queries:
         try:
-            txt, _ = process_jarvis_command(q, events)
+            txt, *_ = process_jarvis_command(q, events)
             synthesize_jarvis_speech(txt)
         except Exception as exc:
             logger.debug(f"Prewarm query '{q}' saltata: {exc}")

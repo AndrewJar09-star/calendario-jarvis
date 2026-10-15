@@ -1584,14 +1584,34 @@ async function processVoiceCommand(cmd) {
       } else {
         jarvisSpeak(res.response);
       }
-      if (res.event) {
-        STATE.selectedDate = new Date(res.event.event_start.replace(' ', 'T'));
-        renderHudCalendar();
-        setTimeout(() => scrollToEventOrDay(formatYMD(STATE.selectedDate)), 100);
-        if (cmd.includes('elimina') || cmd.includes('cancella') || cmd.includes('rimuovi')) {
-          openBottomSheet(res.event);
+
+      // Se J.A.R.V.I.S. ha modificato il database (creato, cancellato o cambiato stato)
+      if (res.action && ['created', 'deleted', 'status_updated'].includes(res.action)) {
+        await loadEvents();
+        if (res.action === 'created') {
+          showToast('Evento inserito in agenda da J.A.R.V.I.S.', 'success');
+        } else if (res.action === 'deleted') {
+          showToast('Evento cancellato da J.A.R.V.I.S.', 'info');
+        } else if (res.action === 'status_updated') {
+          showToast('Stato turno aggiornato da J.A.R.V.I.S.', 'success');
         }
       }
+
+      // Posizionamento calendario sull'evento o sulla data richiesta
+      if (res.event && res.event.event_start) {
+        try {
+          const evDate = new Date(res.event.event_start.replace(' ', 'T'));
+          if (!isNaN(evDate.getTime())) {
+            STATE.selectedDate = evDate;
+            STATE.miniCalMonth = new Date(evDate.getFullYear(), evDate.getMonth(), 1);
+            renderHudCalendar();
+            setTimeout(() => scrollToEventOrDay(formatYMD(STATE.selectedDate)), 150);
+          }
+        } catch (e) {
+          console.warn('Errore parsing data evento:', e);
+        }
+      }
+
       return;
     }
   } catch (err) {

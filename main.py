@@ -344,7 +344,7 @@ def create_event(event: EventCreateRequest):
     - Se category='FIERA' -> call_time = 08:30 dello stesso giorno.
     """
     try:
-        saved = insert_or_update_event(event.model_dump())
+        saved = insert_or_update_event(event.model_dump(), force_insert=True)
         return {
             "message": "Evento creato con successo",
             "event": saved
@@ -568,7 +568,8 @@ def jarvis_command_endpoint(payload: JarvisCommandRequest):
     """
     try:
         events = get_all_events_with_conflicts()
-        spoken_text, matched_event = process_jarvis_command(payload.command, events)
+        spoken_text, matched_event, *extra = process_jarvis_command(payload.command, events)
+        action = extra[0] if extra else None
 
         # Genera/recupera audio da RAM/Disco cache (0-1 ms se in cache)
         wav_bytes, cleaned_text = synthesize_jarvis_speech(spoken_text)
@@ -588,7 +589,8 @@ def jarvis_command_endpoint(payload: JarvisCommandRequest):
             "response": cleaned_text,
             "audio_url": audio_url,
             "audio_data": audio_data,
-            "event": matched_event
+            "event": matched_event,
+            "action": action
         }
     except Exception as e:
         raise HTTPException(
