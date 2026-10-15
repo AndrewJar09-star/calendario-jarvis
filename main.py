@@ -16,6 +16,7 @@ from database import (
     init_db,
     get_all_events_with_conflicts,
     update_event_status,
+    update_event_earnings,
     get_alerts,
     insert_or_update_event,
     check_conflicts_and_updates,
@@ -103,6 +104,11 @@ app.add_middleware(
 # ==========================================
 class StatusUpdateRequest(BaseModel):
     status: str = Field(..., example="Lavoro io", description="Stato: es. 'Lavoro io' o 'Riposo'")
+    earnings: Optional[float] = Field(None, example=50.0, description="Guadagno/compenso in euro")
+
+
+class EarningsUpdateRequest(BaseModel):
+    earnings: Optional[float] = Field(None, example=50.0, description="Guadagno/compenso in euro")
 
 
 class EventCreateRequest(BaseModel):
@@ -113,6 +119,7 @@ class EventCreateRequest(BaseModel):
     call_time: Optional[str] = Field(None, example="2026-10-25 16:45:00", description="Opzionale (calcolato automaticamente)")
     status: Optional[str] = Field("Da confermare", example="Da confermare")
     notes: Optional[str] = Field(None, example="Portare pettorina e tesserino")
+    earnings: Optional[float] = Field(None, example=50.0, description="Guadagno/compenso in euro")
 
 
 class EventUpdateRequest(BaseModel):
@@ -123,6 +130,7 @@ class EventUpdateRequest(BaseModel):
     call_time: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
+    earnings: Optional[float] = None
 
 
 class SyncRequest(BaseModel):
@@ -391,7 +399,7 @@ def change_event_status(event_id: int, payload: StatusUpdateRequest):
             detail="Il campo 'status' non può essere vuoto"
         )
 
-    updated = update_event_status(event_id, valid_status)
+    updated = update_event_status(event_id, valid_status, payload.earnings)
     if not updated:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
@@ -400,6 +408,24 @@ def change_event_status(event_id: int, payload: StatusUpdateRequest):
 
     return {
         "message": f"Stato aggiornato a '{valid_status}'",
+        "event": updated
+    }
+
+
+@app.post("/api/events/{event_id}/earnings")
+def change_event_earnings(event_id: int, payload: EarningsUpdateRequest):
+    """
+    Aggiorna il compenso/guadagno previsto per una chiamata o evento.
+    """
+    updated = update_event_earnings(event_id, payload.earnings)
+    if not updated:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Evento con ID {event_id} non trovato"
+        )
+
+    return {
+        "message": "Guadagno aggiornato con successo",
         "event": updated
     }
 

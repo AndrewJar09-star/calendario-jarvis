@@ -416,6 +416,15 @@
         </div>
       </div>
 
+      <div class="sheet-detail-row" id="sheet-earnings-row" style="display:none;">
+        <div class="sheet-detail-icon">💰</div>
+        <div class="sheet-detail-content">
+          <div class="sheet-detail-label">GUADAGNO / COMPENSO</div>
+          <div class="sheet-detail-value" id="sheet-earnings" style="color:var(--emerald, #10B981); font-weight:700;">—</div>
+        </div>
+        <button class="sheet-edit-earnings-btn" id="btn-sheet-edit-earnings" type="button" title="Modifica compenso">✏️ Modifica</button>
+      </div>
+
       <div class="sheet-detail-row" id="sheet-conflict-row" style="display:none;">
         <div class="sheet-detail-icon">⚠️</div>
         <div class="sheet-detail-content">
@@ -638,6 +647,52 @@
       <div class="form-actions-wrap">
         <button type="button" class="btn-hud-cancel" id="btn-cancel-add">Annulla</button>
         <button type="submit" class="btn-hud-submit">Salva nel Calendario</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Earnings Modal Overlay ("Piccola schermata" guadagno chiamata) -->
+<div id="earnings-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-earnings-title" aria-hidden="true">
+  <div class="modal-container hud-earnings-modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-icon">💰</span>
+        <div>
+          <h2 class="modal-title" id="modal-earnings-title">GUADAGNO CHIAMATA</h2>
+          <div class="modal-subtitle" id="earnings-modal-event-subtitle">INSERISCI IL COMPENSO PREVISTO</div>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="btn-close-earnings" aria-label="Chiudi finestra">&times;</button>
+    </div>
+
+    <form id="earnings-form" class="modal-body hud-modal-form">
+      <div class="earnings-event-preview">
+        <div class="earnings-event-name" id="earnings-event-name">—</div>
+        <div class="earnings-event-meta" id="earnings-event-meta">—</div>
+      </div>
+
+      <div class="form-group">
+        <label for="event-earnings-input">QUANTO GUADAGNI DA QUESTA CHIAMATA? (€)</label>
+        <div class="earnings-input-wrap">
+          <span class="currency-symbol">€</span>
+          <input type="number" id="event-earnings-input" class="hud-input earnings-number-input" placeholder="0.00" step="any" min="0" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="earnings-presets-label">IMPORTI RAPIDI:</div>
+      <div class="earnings-presets" id="earnings-presets">
+        <button type="button" class="preset-btn" data-amount="35">€35</button>
+        <button type="button" class="preset-btn" data-amount="40">€40</button>
+        <button type="button" class="preset-btn" data-amount="50">€50</button>
+        <button type="button" class="preset-btn" data-amount="60">€60</button>
+        <button type="button" class="preset-btn" data-amount="70">€70</button>
+        <button type="button" class="preset-btn" data-amount="80">€80</button>
+      </div>
+
+      <div class="form-actions-wrap">
+        <button type="button" class="btn-hud-cancel" id="btn-skip-earnings">Chiudi</button>
+        <button type="submit" class="btn-hud-submit btn-earnings-submit" id="btn-submit-earnings">💾 Salva Guadagno</button>
       </div>
     </form>
   </div>

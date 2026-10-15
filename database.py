@@ -28,10 +28,15 @@ def init_db() -> None:
                 call_time TEXT NOT NULL,
                 status TEXT DEFAULT 'Da confermare',
                 updated_flag INTEGER DEFAULT 0,
-                notes TEXT
+                notes TEXT,
+                earnings REAL DEFAULT NULL
             )
             """
         )
+        try:
+            cursor.execute("ALTER TABLE events ADD COLUMN earnings REAL DEFAULT NULL")
+        except sqlite3.OperationalError:
+            pass
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_event_start ON events(event_start)")
         conn.commit()
 
@@ -276,6 +281,7 @@ def insert_or_update_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
         event_start = event_data.get("event_start")
         notes = event_data.get("notes", "")
         status = event_data.get("status", "Da confermare")
+        earnings = event_data.get("earnings")
 
         # Calcolo call_time
         call_time = calculate_call_time(category, event_start, event_data.get("call_time"))
@@ -321,6 +327,10 @@ def insert_or_update_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
             existing_dict = dict(existing)
             existing_status = existing_dict.get("status")
             final_status = existing_status if (existing_status and existing_status != "Da confermare") else status
+            
+            # Preserva compenso/guadagno esistente se non passato esplicitamente
+            existing_earnings = existing_dict.get("earnings")
+            final_earnings = earnings if earnings is not None else existing_earnings
 
             # Verifica se l'orario di inizio è cambiato rispetto al DB
             old_start = existing_dict["event_start"]
@@ -339,19 +349,19 @@ def insert_or_update_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
                 """
                 UPDATE events
                 SET title = ?, venue = ?, category = ?, event_start = ?, call_time = ?,
-                    status = ?, updated_flag = ?, notes = ?
+                    status = ?, updated_flag = ?, notes = ?, earnings = ?
                 WHERE id = ?
                 """,
-                (title, venue, category, event_start, call_time, final_status, updated_flag, notes, event_id)
+                (title, venue, category, event_start, call_time, final_status, updated_flag, notes, final_earnings, event_id)
             )
             saved_id = event_id
         else:
             cursor.execute(
                 """
-                INSERT INTO events (title, venue, category, event_start, call_time, status, updated_flag, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO events (title, venue, category, event_start, call_time, status, updated_flag, notes, earnings)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (title, venue, category, event_start, call_time, status, 0, notes)
+                (title, venue, category, event_start, call_time, status, 0, notes, earnings)
             )
             saved_id = cursor.lastrowid
 
@@ -364,12 +374,31 @@ def insert_or_update_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
         conn.close()
 
 
-def update_event_status(event_id: int, status: str) -> Optional[Dict[str, Any]]:
-    """Aggiorna lo stato di un evento (es. 'Lavoro io' o 'Riposo')."""
+def update_event_status(event_id: int, status: str, earnings: Optional[float] = None) -> Optional[Dict[str, Any]]:
+    """Aggiorna lo stato di un evento (es. 'Lavoro io' o 'Riposo') e opzionalmente il compenso/guadagno."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE events SET status = ? WHERE id = ?", (status, event_id))
+        if earnings is not None:
+            cursor.execute("UPDATE events SET status = ?, earnings = ? WHERE id = ?", (status, earnings, event_id))
+        else:
+            cursor.execute("UPDATE events SET status = ? WHERE id = ?", (status, event_id))
+        conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def update_event_earnings(event_id: int, earnings: Optional[float]) -> Optional[Dict[str, Any]]:
+    """Aggiorna il compenso/guadagno di un evento."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE events SET earnings = ? WHERE id = ?", (earnings, event_id))
         conn.commit()
         if cursor.rowcount == 0:
             return None

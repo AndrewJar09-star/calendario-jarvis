@@ -15,6 +15,7 @@ const STATE = {
   miniCalMonth: new Date('2026-10-01'), // Mini calendar view month
   activeCategories: new Set(['NAPOLI', 'STABIA', 'CASERTANA', 'MOSTRA', 'CUSTOM']),
   selectedEvent: null,
+  earningsTargetEvent: null,
   isListening: false,
   isSpeaking: false,
   calendar: null,
@@ -22,6 +23,20 @@ const STATE = {
   searchQuery: '',
   searchCategory: 'ALL',
 };
+
+// ─── Helpers: Visibilità Calendario & Formattazione Guadagno ────
+function isEventHiddenFromCalendar(ev) {
+  if (!ev) return false;
+  const st = (ev.status || '').toLowerCase().trim();
+  return st.includes('riposo') || st.includes('ignora');
+}
+
+function formatEarnings(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const num = Number(val);
+  if (isNaN(num)) return null;
+  return num % 1 === 0 ? `€${num.toFixed(0)}` : `€${num.toFixed(2)}`;
+}
 
 // ─── Category Config ────────────────────────────────────────────
 const CATEGORY_CONFIG = {
@@ -243,7 +258,7 @@ async function loadEvents() {
 // ─── Next Shift Card ────────────────────────────────────────────
 function renderNextShift() {
   const future = STATE.events
-    .filter(e => isFuture(e.event_start))
+    .filter(e => !isEventHiddenFromCalendar(e) && isFuture(e.event_start))
     .sort((a, b) => new Date(a.event_start.replace(' ', 'T')) - new Date(b.event_start.replace(' ', 'T')));
 
   const sideTitle = document.getElementById('sidebar-next-shift-title');
@@ -345,8 +360,8 @@ function renderMiniCalendar() {
     const dateStr = formatYMD(curDate);
     const isSelected = isSameDay(curDate, STATE.selectedDate);
 
-    // Verifica eventi presenti per questo giorno
-    const hasEvents = STATE.events.some(e => e.event_start.startsWith(dateStr));
+    // Verifica eventi presenti per questo giorno (esclude Riposo/Ignora dal calendario)
+    const hasEvents = STATE.events.some(e => !isEventHiddenFromCalendar(e) && e.event_start.startsWith(dateStr));
     const isTech = (d === 31); // 31 con corner tech come nello screenshot
 
     let classes = 'mini-day-cell';
@@ -406,8 +421,9 @@ function renderHudWeekView() {
     const activeClass = isSelected ? ' active-day-header' : '';
     const dateStr = formatYMD(d);
 
-    // Eventi di questa giornata per mostrare pill riassuntiva in testata
+    // Eventi di questa giornata per mostrare pill riassuntiva in testata (esclude Riposo)
     const dayEvs = STATE.events.filter(ev => {
+      if (isEventHiddenFromCalendar(ev)) return false;
       if (!ev.event_start.startsWith(dateStr)) return false;
       return STATE.activeCategories.has(classifyEventCategory(ev));
     });
@@ -485,8 +501,9 @@ function renderHudWeekView() {
     const isSelected = isSameDay(d, STATE.selectedDate);
     const colClass = isSelected ? 'week-day-column active-day-col' : 'week-day-column';
 
-    // Filtra eventi per la data e categorie attive
+    // Filtra eventi per la data e categorie attive (esclude eventi con stato Riposo/Ignora)
     const colEvents = STATE.events.filter(ev => {
+      if (isEventHiddenFromCalendar(ev)) return false;
       if (!ev.event_start.startsWith(dateStr)) return false;
       const catGroup = classifyEventCategory(ev);
       return STATE.activeCategories.has(catGroup);
@@ -511,7 +528,7 @@ function renderHudWeekView() {
         durationHours = 1.5;
       }
 
-      const height = Math.max(52, durationHours * 60);
+      const height = Math.max(62, durationHours * 60);
 
       const startTimeFormatted = formatTime(ev.event_start);
       const endDt = new Date(new Date(ev.event_start.replace(' ', 'T')).getTime() + durationHours * 3600 * 1000);
@@ -520,12 +537,17 @@ function renderHudWeekView() {
       const convText = ev.call_time ? `🚨 Conv. ${formatTime(ev.call_time)}` : '';
       const venueText = ev.venue || 'Sede';
       const subText = convText ? `${convText} • ${venueText}` : (ev.notes || venueText);
+      const earningsFormatted = formatEarnings(ev.earnings);
+      const earningsHtml = earningsFormatted
+        ? `<div class="hud-event-card-earnings">💰 Guadagno: ${earningsFormatted}</div>`
+        : '';
 
       return `
         <div class="hud-event-card ${style.class}" style="top: ${top}px; height: ${height}px;" data-event-id="${ev.id}" role="button" tabindex="0" title="${ev.title}">
           <div class="hud-event-card-time">${startTimeFormatted} - ${endTimeFormatted}</div>
           <div class="hud-event-card-title">${ev.title}</div>
           <div class="hud-event-card-sub">• ${subText}</div>
+          ${earningsHtml}
           <div class="hud-event-card-glyph">${style.glyph || '🛡️'}</div>
         </div>
       `;
@@ -554,6 +576,7 @@ function scrollToEventOrDay(targetYMD) {
   if (!scroller) return;
 
   const dayEvs = STATE.events.filter(ev => {
+    if (isEventHiddenFromCalendar(ev)) return false;
     if (!ev.event_start.startsWith(targetYMD)) return false;
     return STATE.activeCategories.has(classifyEventCategory(ev));
   });
@@ -565,14 +588,14 @@ function scrollToEventOrDay(targetYMD) {
     const targetTop = Math.max(0, ((h - 8) + m / 60) * 60 - 80);
     scroller.scrollTo({ top: targetTop, behavior: 'smooth' });
   } else {
-    // Se non ci sono eventi sul giorno selezionato, cerca il primo turno della settimana
+    // Se non ci sono eventi sul giorno selezionato, cerca il primo turno visibile della settimana
     const monday = getMonday(STATE.selectedDate);
     let weekEarliestTop = 9999;
     for (let i = 0; i < 7; i++) {
       const wd = new Date(monday);
       wd.setDate(monday.getDate() + i);
       const wYMD = formatYMD(wd);
-      const evs = STATE.events.filter(e => e.event_start.startsWith(wYMD) && STATE.activeCategories.has(classifyEventCategory(e)));
+      const evs = STATE.events.filter(e => !isEventHiddenFromCalendar(e) && e.event_start.startsWith(wYMD) && STATE.activeCategories.has(classifyEventCategory(e)));
       for (const e of evs) {
         const t = (e.call_time || e.event_start).split(' ')[1] || '09:00:00';
         const [eh, em] = t.split(':').map(Number);
@@ -612,6 +635,7 @@ function renderHudDayView() {
 
   const selectedYMD = formatYMD(STATE.selectedDate);
   const dayEvents = STATE.events.filter(ev => {
+    if (isEventHiddenFromCalendar(ev)) return false;
     if (!ev.event_start.startsWith(selectedYMD)) return false;
     const catGroup = classifyEventCategory(ev);
     return STATE.activeCategories.has(catGroup);
@@ -622,15 +646,22 @@ function renderHudDayView() {
     const timeParts = ev.event_start.split(' ')[1] || '09:00:00';
     const [h, m] = timeParts.split(':').map(Number);
     const top = Math.max(0, ((h - 8) + m / 60) * 60);
-    const height = 75;
+    const height = 85;
     const startTimeFormatted = formatTime(ev.event_start);
-    const subText = ev.notes || ev.venue || 'Sub-text';
+    const convText = ev.call_time ? `🚨 Conv. ${formatTime(ev.call_time)}` : '';
+    const venueText = ev.venue || 'Sede';
+    const subText = convText ? `${convText} • ${venueText}` : (ev.notes || venueText);
+    const earningsFormatted = formatEarnings(ev.earnings);
+    const earningsHtml = earningsFormatted
+      ? `<div class="hud-event-card-earnings">💰 Guadagno: ${earningsFormatted}</div>`
+      : '';
 
     return `
       <div class="hud-event-card ${style.class}" style="top: ${top}px; height: ${height}px; left: 16px; right: 16px;" data-event-id="${ev.id}" role="button" tabindex="0">
         <div class="hud-event-card-time">${startTimeFormatted}</div>
         <div class="hud-event-card-title">${ev.title}</div>
         <div class="hud-event-card-sub">• ${subText}</div>
+        ${earningsHtml}
         <div class="hud-event-card-glyph">${style.glyph || '🛡️'}</div>
       </div>
     `;
@@ -674,6 +705,7 @@ function renderHudMonthView() {
     const activeClass = isSelected ? ' active-today' : '';
 
     const dayEvs = STATE.events.filter(e => {
+      if (isEventHiddenFromCalendar(e)) return false;
       if (!e.event_start.startsWith(dateStr)) return false;
       return STATE.activeCategories.has(classifyEventCategory(e));
     });
@@ -732,6 +764,11 @@ function renderShiftsList() {
     else if ((ev.status || '').toLowerCase().includes('riposo')) { statusClass = 'riposo'; statusLabel = '❌ RIPOSO'; }
     if (ev.conflict) { statusClass = 'conflict'; statusLabel = '⚠️ CONFLITTO'; }
 
+    const earningsFormatted = formatEarnings(ev.earnings);
+    const earningsHtml = earningsFormatted
+      ? `<div class="shift-earnings-row"><span>💰</span><span>Guadagno: <strong style="color:var(--emerald,#10B981);">${earningsFormatted}</strong></span></div>`
+      : '';
+
     return `
     <div class="shift-card${ev.conflict ? ' conflict' : ''}" data-event-id="${ev.id}" role="button" tabindex="0" aria-label="Evento: ${ev.title}">
       <div class="shift-card-top">
@@ -746,6 +783,7 @@ function renderShiftsList() {
         <span>🔔</span>
         <span>Convocazione: <strong>${formatDateTime(ev.call_time)}</strong></span>
       </div>
+      ${earningsHtml}
       <div><span class="cat-badge ${style.badgeClass}">${style.label}</span></div>
     </div>`;
   }).join('');
@@ -884,6 +922,18 @@ function openBottomSheet(ev) {
     notesRow.style.display = 'none';
   }
 
+  // Visualizzazione riga guadagno nel foglio dettagli evento
+  const earningsRow = document.getElementById('sheet-earnings-row');
+  const earningsFormatted = formatEarnings(ev.earnings);
+  if (earningsRow) {
+    if (earningsFormatted) {
+      earningsRow.style.display = 'flex';
+      document.getElementById('sheet-earnings').textContent = earningsFormatted;
+    } else {
+      earningsRow.style.display = 'none';
+    }
+  }
+
   const conflictRow = document.getElementById('sheet-conflict-row');
   conflictRow.style.display = ev.conflict ? 'flex' : 'none';
 
@@ -917,13 +967,104 @@ function closeBottomSheet() {
 
 async function confirmEvent(status) {
   if (!STATE.selectedEvent) return;
+  const currentEv = STATE.selectedEvent;
+
   try {
-    await apiPost(`/api/events/${STATE.selectedEvent.id}/status`, { status });
+    await apiPost(`/api/events/${currentEv.id}/status`, { status });
     closeBottomSheet();
     showToast(`Stato aggiornato: ${status}`, 'success');
     await loadEvents();
+
+    // Se l'utente ha impostato 'Lavoro io', apri la schermata per inserire quanti soldi guadagna da quella chiamata
+    if (status.toLowerCase().includes('lavoro')) {
+      const refreshedEv = STATE.events.find(e => e.id === currentEv.id) || currentEv;
+      setTimeout(() => openEarningsModal(refreshedEv), 180);
+    }
   } catch (err) {
+    console.error('Errore aggiornamento stato:', err);
     showToast('Errore aggiornamento stato', 'error');
+  }
+}
+
+// ─── Earnings Modal Component ("Piccola schermata" guadagno) ─────
+function openEarningsModal(ev) {
+  if (!ev) return;
+  STATE.earningsTargetEvent = ev;
+  const overlay = document.getElementById('earnings-modal-overlay');
+  if (!overlay) return;
+
+  const titleEl = document.getElementById('earnings-event-name');
+  if (titleEl) titleEl.textContent = ev.title || 'Evento';
+
+  const metaEl = document.getElementById('earnings-event-meta');
+  if (metaEl) {
+    const dateText = formatDateTime(ev.event_start);
+    const convText = ev.call_time ? ` • Conv. ${formatTime(ev.call_time)}` : '';
+    const venueText = ev.venue ? ` • ${ev.venue}` : '';
+    metaEl.textContent = `${dateText}${convText}${venueText}`;
+  }
+
+  const input = document.getElementById('event-earnings-input');
+  if (input) {
+    input.value = (ev.earnings !== null && ev.earnings !== undefined && ev.earnings !== '') ? ev.earnings : '';
+  }
+
+  // Aggiorna stato attivo dei pulsanti preset
+  document.querySelectorAll('#earnings-presets .preset-btn').forEach(btn => {
+    const amt = parseFloat(btn.dataset.amount);
+    btn.classList.toggle('active', amt === parseFloat(ev.earnings));
+  });
+
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  setTimeout(() => {
+    if (input) {
+      input.focus();
+      if (input.value) input.select();
+    }
+  }, 100);
+}
+
+function closeEarningsModal() {
+  const overlay = document.getElementById('earnings-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+  STATE.earningsTargetEvent = null;
+}
+
+async function handleEarningsSubmit(e) {
+  if (e) e.preventDefault();
+  const ev = STATE.earningsTargetEvent;
+  if (!ev) {
+    closeEarningsModal();
+    return;
+  }
+
+  const input = document.getElementById('event-earnings-input');
+  const rawVal = input?.value.trim();
+  let amount = null;
+  if (rawVal !== '' && rawVal !== null && rawVal !== undefined) {
+    amount = parseFloat(rawVal);
+    if (isNaN(amount) || amount < 0) {
+      showToast('Inserisci un importo valido', 'error');
+      return;
+    }
+  }
+
+  try {
+    await apiPost(`/api/events/${ev.id}/earnings`, { earnings: amount });
+    closeEarningsModal();
+    if (amount !== null) {
+      showToast(`💰 Guadagno salvato: €${amount.toFixed(2)}`, 'success');
+    } else {
+      showToast('Compenso rimosso', 'info');
+    }
+    await loadEvents();
+  } catch (err) {
+    console.error('Errore salvataggio guadagno:', err);
+    showToast('Errore durante il salvataggio del guadagno', 'error');
   }
 }
 
@@ -1982,11 +2123,39 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-sheet-confirm')?.addEventListener('click', () => confirmEvent('Lavoro io'));
   document.getElementById('btn-sheet-ignore')?.addEventListener('click', () => confirmEvent('Riposo'));
   document.getElementById('btn-sheet-delete')?.addEventListener('click', deleteCurrentEvent);
+  document.getElementById('btn-sheet-edit-earnings')?.addEventListener('click', () => {
+    if (!STATE.selectedEvent) return;
+    const ev = STATE.selectedEvent;
+    closeBottomSheet();
+    setTimeout(() => openEarningsModal(ev), 200);
+  });
   document.getElementById('btn-sheet-gcal')?.addEventListener('click', () => {
     if (!STATE.selectedEvent) return;
     const gcalUrl = generateGoogleCalendarUrl(STATE.selectedEvent);
     window.open(gcalUrl, '_blank');
     showToast(`Apertura Google Calendar per ${STATE.selectedEvent.title}`, 'info');
+  });
+
+  // Earnings Modal listeners
+  document.getElementById('btn-close-earnings')?.addEventListener('click', closeEarningsModal);
+  document.getElementById('btn-skip-earnings')?.addEventListener('click', closeEarningsModal);
+  document.getElementById('earnings-modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('earnings-modal-overlay')) closeEarningsModal();
+  });
+  document.getElementById('earnings-form')?.addEventListener('submit', handleEarningsSubmit);
+
+  // Quick preset pills for earnings
+  document.querySelectorAll('#earnings-presets .preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const amt = btn.dataset.amount;
+      const input = document.getElementById('event-earnings-input');
+      if (input) {
+        input.value = amt;
+        input.focus();
+      }
+      document.querySelectorAll('#earnings-presets .preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
   });
 
   // Sync button
