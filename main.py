@@ -25,6 +25,16 @@ from database import (
     get_event_by_id,
 )
 from scraper import sync_all_events
+from jarvis_voice import (
+    synthesize_jarvis_speech,
+    play_jarvis_speech,
+    stop_jarvis_speech,
+    process_jarvis_command,
+    JarvisFormatter,
+    JarvisResponses,
+    JARVIS_SYSTEM_PROMPT,
+)
+import urllib.parse
 
 # Inizializzazione scheduler di background (intervallo 6 ore)
 scheduler = BackgroundScheduler()
@@ -107,6 +117,11 @@ class EventUpdateRequest(BaseModel):
 
 class SyncRequest(BaseModel):
     force_seed: Optional[bool] = Field(False, description="Forza l'uso dei dati reali di seed come fallback")
+
+
+class JarvisCommandRequest(BaseModel):
+    command: str = Field(..., example="Quando è il mio prossimo turno?")
+    play_local: Optional[bool] = Field(False, description="Se True riproduce l'audio anche sugli altoparlanti locali del PC")
 
 
 # ==========================================
@@ -462,4 +477,89 @@ def trigger_sync(payload: Optional[SyncRequest] = None):
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Errore durante l'esecuzione della sincronizzazione: {str(e)}"
         )
+
+
+# =====================================================================
+# J.A.R.V.I.S. VOICE & HOLOGRAPHIC AUDIO API (100% GRATUITO)
+# =====================================================================
+
+@app.get("/api/jarvis/speak")
+def jarvis_speak_endpoint(text: str, play_local: bool = False):
+    """
+    Sintetizza e restituisce in streaming l'audio WAV con la voce neurale
+    e il filtro DSP olografico di J.A.R.V.I.S. (Edge-TTS it-IT-DiegoNeural + High-Pass 120Hz
+    + Peaking 2-4kHz + Micro-Delay 8ms + Peak Normalization).
+    Se play_local=True, riproduce l'audio anche direttamente dagli altoparlanti del PC.
+    """
+    if not text or not text.strip():
+        text = "A sua completa disposizione, Signore."
+
+    try:
+        wav_bytes, cleaned_text = synthesize_jarvis_speech(text)
+
+        if play_local:
+            play_jarvis_speech(cleaned_text, blocking=False)
+
+        safe_header_text = urllib.parse.quote(cleaned_text[:120])
+        return Response(
+            content=wav_bytes,
+            media_type="audio/wav",
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "X-Jarvis-Text": safe_header_text,
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore nella generazione vocale J.A.R.V.I.S.: {str(e)}"
+        )
+
+
+@app.post("/api/jarvis/command")
+def jarvis_command_endpoint(payload: JarvisCommandRequest):
+    """
+    Riceve un comando vocale o testuale, genera la risposta secondo la personalità
+    e il tono impeccabile di J.A.R.V.I.S., sintetizza l'audio olografico
+    e restituisce sia il testo che l'URL audio per la riproduzione immediata.
+    """
+    try:
+        events = get_all_events_with_conflicts()
+        spoken_text, matched_event = process_jarvis_command(payload.command, events)
+
+        if payload.play_local:
+            play_jarvis_speech(spoken_text, blocking=False)
+
+        encoded_text = urllib.parse.quote(spoken_text)
+        audio_url = f"/api/jarvis/speak?text={encoded_text}"
+
+        return {
+            "status": "success",
+            "command": payload.command,
+            "response": spoken_text,
+            "audio_url": audio_url,
+            "event": matched_event
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore durante l'elaborazione del comando: {str(e)}"
+        )
+
+
+@app.post("/api/jarvis/stop")
+def jarvis_stop_endpoint():
+    """Interrompe qualsiasi riproduzione vocale J.A.R.V.I.S. in corso."""
+    stop_jarvis_speech()
+    return {"status": "stopped", "message": "Riproduzione vocale interrotta, Signore."}
+
+
+@app.get("/api/jarvis/system-prompt")
+def jarvis_system_prompt_endpoint():
+    """Restituisce il System Prompt ufficiale e le direttive di personalità di J.A.R.V.I.S."""
+    return {
+        "assistant": "J.A.R.V.I.S.",
+        "system_prompt": JARVIS_SYSTEM_PROMPT
+    }
+
 

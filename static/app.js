@@ -1229,37 +1229,10 @@ function setJarvisText(text) {
   }
 }
 
-/**
- * jarvisSpeak — TTS con voce italiana ottimizzata.
- * Passa il testo attraverso cleanJarvisSpeechText prima della sintesi.
- * Parametri calibrati per tono J.A.R.V.I.S.: calmo, autorevole, profondo.
- * @param {string} text - Testo da pronunciare (verrà pulito automaticamente)
- */
-function jarvisSpeak(text) {
-  STATE.isSpeaking = true;
-  const headerJarvis = document.getElementById('hud-header-jarvis');
-  if (headerJarvis) {
-    headerJarvis.classList.add('speaking');
-    headerJarvis.classList.remove('listening');
-  }
-  const headerStatus = document.getElementById('header-jarvis-status');
-  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
+let _jarvisAudioPlayer = null;
 
-  const capsule = document.getElementById('hud-floating-capsule');
-  if (capsule) {
-    capsule.classList.add('speaking');
-    const cmdText = document.getElementById('capsule-command-text');
-    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
-  }
-  const btn = document.getElementById('arc-reactor-btn');
-  if (btn) btn.classList.add('speaking');
-  const arcText = document.getElementById('arc-status-text');
-  if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
-  setJarvisText(text);
-
-  // Pulizia testo per la sintesi vocale
+function fallbackBrowserSpeak(text) {
   const cleanText = cleanJarvisSpeechText(text);
-
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = 'it-IT';
   utterance.pitch  = 0.92;
@@ -1284,6 +1257,66 @@ function jarvisSpeak(text) {
   speechSynthesis.speak(utterance);
 }
 
+/**
+ * jarvisSpeak — Sintesi vocale con Timbro Neurale & Filtro Olografico DSP (100% gratuito).
+ * Riproduce l'audio generato dal backend Python (Edge-TTS DiegoNeural + HighPass 120Hz + Boost 2-4kHz + MicroDelay 8ms).
+ * Se il backend non è raggiungibile, esegue il fallback trasparente al browser.
+ * @param {string} text - Testo da pronunciare
+ */
+function jarvisSpeak(text) {
+  STATE.isSpeaking = true;
+  const headerJarvis = document.getElementById('hud-header-jarvis');
+  if (headerJarvis) {
+    headerJarvis.classList.add('speaking');
+    headerJarvis.classList.remove('listening');
+  }
+  const headerStatus = document.getElementById('header-jarvis-status');
+  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
+
+  const capsule = document.getElementById('hud-floating-capsule');
+  if (capsule) {
+    capsule.classList.add('speaking');
+    const cmdText = document.getElementById('capsule-command-text');
+    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
+  }
+  const btn = document.getElementById('arc-reactor-btn');
+  if (btn) btn.classList.add('speaking');
+  const arcText = document.getElementById('arc-status-text');
+  if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
+  setJarvisText(text);
+
+  // Prova riproduzione audio neurale con filtro DSP J.A.R.V.I.S. dal server locale
+  try {
+    if (_jarvisAudioPlayer) {
+      _jarvisAudioPlayer.pause();
+      _jarvisAudioPlayer.currentTime = 0;
+    }
+    const audioUrl = `/api/jarvis/speak?text=${encodeURIComponent(text)}`;
+    _jarvisAudioPlayer = new Audio(audioUrl);
+
+    _jarvisAudioPlayer.onended = () => {
+      STATE.isSpeaking = false;
+      resetArcReactor();
+    };
+
+    _jarvisAudioPlayer.onerror = (e) => {
+      console.warn('Backend audio non disponibile, uso fallback browser:', e);
+      fallbackBrowserSpeak(text);
+    };
+
+    const playPromise = _jarvisAudioPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Autoplay bloccato, uso fallback browser:', err);
+        fallbackBrowserSpeak(text);
+      });
+    }
+  } catch (err) {
+    console.warn('Errore avvio audio J.A.R.V.I.S., uso fallback browser:', err);
+    fallbackBrowserSpeak(text);
+  }
+}
+
 /* ================================================================
    PARTE 2 — FIX LOGICA RICERCA "Prossima partita del Napoli"
    ================================================================ */
@@ -1291,16 +1324,6 @@ function jarvisSpeak(text) {
 /**
  * isFootballMatch — Determina se un evento è una PARTITA DI CALCIO
  * (non una fiera, non un evento generico con "Napoli" nel nome).
- *
- * Un evento è considerato partita solo se:
- * - Il titolo contiene " vs " o " - " tra squadre
- * - Il campo venue contiene "Stadio" o "Maradona"
- * - La categoria è CALCIO/FOOTBALL
- *
- * Esclusi: titoli con "EXPO NAPOLI", "COMUNE DI", "FIERA", "MOSTRA"
- *
- * @param {Object} event - Oggetto evento dal database
- * @returns {boolean}
  */
 function isFootballMatch(event) {
   const title  = (event.title || '').toUpperCase();
@@ -1321,17 +1344,34 @@ function isFootballMatch(event) {
     return true;
   }
 
-  // Inclusione per titolo con pattern "Squadra vs Squadra" o "Squadra - Squadra"
-  // Regex: almeno una parola, spazio, "vs"/"VS"/" - ", spazio, almeno una parola
   if (/\b\w+\s+(vs|VS|contro)\s+\w+\b/.test(event.title)) return true;
-  // Pattern " - " tra due squadre (es. "Napoli - Inter")
   if (/\b[A-Z][a-zA-Z]+\s+-\s+[A-Z][a-zA-Z]+\b/.test(event.title)) return true;
 
   return false;
 }
 
 // ─── Voice Commands ──────────────────────────────────────────────
-function processVoiceCommand(cmd) {
+async function processVoiceCommand(cmd) {
+  setJarvisText(`"${cmd}"`);
+
+  // 1. Tenta elaborazione intelligente via backend J.A.R.V.I.S. (con risposte britanniche e filtro DSP)
+  try {
+    const res = await apiPost('/api/jarvis/command', { command: cmd });
+    if (res && res.response) {
+      jarvisSpeak(res.response);
+      if (res.event) {
+        STATE.selectedDate = new Date(res.event.event_start.replace(' ', 'T'));
+        renderHudCalendar();
+        setTimeout(() => scrollToEventOrDay(formatYMD(STATE.selectedDate)), 100);
+        if (cmd.includes('elimina') || cmd.includes('cancella') || cmd.includes('rimuovi')) {
+          openBottomSheet(res.event);
+        }
+      }
+      return;
+    }
+  } catch (err) {
+    console.warn('Backend J.A.R.V.I.S. non raggiungibile, utilizzo logica locale:', err);
+  }
   setJarvisText(`"${cmd}"`);
 
   // ── Prossimo turno generico ──
