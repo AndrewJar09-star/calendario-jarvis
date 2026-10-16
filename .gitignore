@@ -1,0 +1,78 @@
+# ================================================================================
+# S.T.E.W.A.R.D. OS — .gitignore
+# File e cartelle esclusi dal tracciamento Git e dal caricamento su GitHub
+# ================================================================================
+
+# --- Bytecode e cache di Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Ambienti Virtuali (Virtual Environments) ---
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Database SQLite locale e file temporanei di transazione ---
+# Escludiamo il database locale con i turni personali/privati
+steward.db
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- Cache Audio generata da J.A.R.V.I.S. (Edge-TTS / WAV) ---
+# Escludiamo tutti i file audio generati localmente, preservando la cartella
+static/audio_cache/*
+!static/audio_cache/.gitkeep
+
+# --- File di configurazione ambiente e credenziali segrete ---
+.env
+.env.local
+.env.*
+!.env.example
+
+# --- File di sistema operativo (Windows, macOS, Linux) ---
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Configurazioni IDE ed Editor ---
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# --- Log e file temporanei di esecuzione ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Documentazione privata e note personali ---
+GUIDA_E_SPIEGAZIONE.txt
+
+# --- Foto sorgenti pesanti (cartella principale) ---
+app ico.jpg
+jarvis ico.jpg
+
