@@ -1145,15 +1145,26 @@ function openBottomSheet(ev) {
     notesRow.style.display = 'none';
   }
 
-  // Visualizzazione riga guadagno nel foglio dettagli evento
+  // Visualizzazione riga guadagno nel foglio dettagli evento (sempre visibile per consultazione e modifica immediata)
   const earningsRow = document.getElementById('sheet-earnings-row');
+  const earningsValEl = document.getElementById('sheet-earnings');
+  const earningsEditBtn = document.getElementById('btn-sheet-edit-earnings');
   const earningsFormatted = formatEarnings(ev.earnings);
+
   if (earningsRow) {
+    earningsRow.style.display = 'flex';
     if (earningsFormatted) {
-      earningsRow.style.display = 'flex';
-      document.getElementById('sheet-earnings').textContent = earningsFormatted;
+      if (earningsValEl) {
+        earningsValEl.textContent = earningsFormatted;
+        earningsValEl.style.color = 'var(--emerald, #10B981)';
+      }
+      if (earningsEditBtn) earningsEditBtn.textContent = '✏️ Modifica';
     } else {
-      earningsRow.style.display = 'none';
+      if (earningsValEl) {
+        earningsValEl.textContent = 'Non impostato';
+        earningsValEl.style.color = 'rgba(232, 244, 255, 0.45)';
+      }
+      if (earningsEditBtn) earningsEditBtn.textContent = '+ Imposta';
     }
   }
 

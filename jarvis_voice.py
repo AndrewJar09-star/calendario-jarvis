@@ -826,7 +826,18 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             f"La convocazione generale è fissata per le {call_txt}, signore."
         ), ev, "view_date"
 
-    # 5.6 Conflitti / Sovrapposizioni
+    # 5.6 Guadagni e Compensi
+    if any(k in cmd_lower for k in ["guadagn", "compenso", "quanto prendo", "soldi", "paga totale"]):
+        work_events = [e for e in events if (e.get("earnings") is not None and float(e.get("earnings") or 0) > 0)]
+        if not work_events:
+            return "Al momento non risultano compensi registrati per i suoi turni in calendario, signore. Può inserire il compenso direttamente toccando un evento o confermandolo.", None, None
+        tot = sum(float(e.get("earnings") or 0) for e in work_events)
+        return (
+            f"Signore, in base ai turni per i quali ha inserito il compenso, il suo guadagno complessivo ammonta a {int(tot)} euro "
+            f"su un totale di {len(work_events)} chiamate registrate."
+        ), work_events[0], "view_date"
+
+    # 5.7 Conflitti / Sovrapposizioni
     if any(k in cmd_lower for k in ["conflitt", "sovrapposiz", "coincidenz", "doppio"]):
         conflicts = [e for e in events if e.get("conflict")]
         if not conflicts:
