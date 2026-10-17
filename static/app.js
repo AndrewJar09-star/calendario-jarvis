@@ -7,9 +7,10 @@
 'use strict';
 
 // ─── State ──────────────────────────────────────────────────────
+const isMobileInitial = typeof window !== 'undefined' && window.innerWidth <= 768;
 const STATE = {
   events: [],
-  currentView: 'week', // 'week' (default screenshot) | 'day' | 'month'
+  currentView: isMobileInitial ? 'month' : 'week', // Su smartphone apre direttamente la panoramica Mese completa
   activeTab: 'calendar',
   selectedDate: new Date('2026-10-14T09:30:00'), // Default matches screenshot: 14 Ottobre 2026
   miniCalMonth: new Date('2026-10-01'), // Mini calendar view month
@@ -940,8 +941,21 @@ function renderHudMonthView() {
   bodyEl.querySelectorAll('.month-cell[data-date]').forEach(cell => {
     cell.addEventListener('click', () => {
       const dStr = cell.dataset.date;
-      if (dStr) {
-        STATE.selectedDate = new Date(dStr + 'T09:30:00');
+      if (!dStr) return;
+      STATE.selectedDate = new Date(dStr + 'T09:30:00');
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const dayEvs = STATE.events.filter(e => e.event_start && e.event_start.startsWith(dStr) && !isEventHiddenFromCalendar(e));
+        if (dayEvs.length === 1) {
+          openBottomSheet(dayEvs[0]);
+        } else if (dayEvs.length > 1) {
+          STATE.currentView = 'day';
+          renderHudCalendar();
+        } else {
+          STATE.currentView = 'day';
+          renderHudCalendar();
+        }
+      } else {
         STATE.currentView = 'week';
         renderHudCalendar();
       }
