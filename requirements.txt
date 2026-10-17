@@ -7,4 +7,3 @@ apscheduler
 edge-tts>=7.0.0
 numpy>=2.0.0
 scipy>=1.14.0
-pygame>=2.6.0

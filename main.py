@@ -544,9 +544,10 @@ def jarvis_speak_endpoint(text: str, play_local: bool = False):
             play_jarvis_speech(cleaned_text, blocking=False)
 
         safe_header_text = urllib.parse.quote(cleaned_text[:120])
+        audio_mime = "audio/mpeg" if wav_bytes.startswith(b"ID3") or wav_bytes.startswith(b"\xff\xfb") else "audio/wav"
         return Response(
             content=wav_bytes,
-            media_type="audio/wav",
+            media_type=audio_mime,
             headers={
                 "Cache-Control": "public, max-age=86400",
                 "X-Jarvis-Text": safe_header_text,
@@ -577,8 +578,9 @@ def jarvis_command_endpoint(payload: JarvisCommandRequest):
         if payload.play_local:
             play_jarvis_speech(cleaned_text, blocking=False)
 
+        audio_mime = "audio/mpeg" if wav_bytes.startswith(b"ID3") or wav_bytes.startswith(b"\xff\xfb") else "audio/wav"
         b64_audio = base64.b64encode(wav_bytes).decode("ascii")
-        audio_data = f"data:audio/wav;base64,{b64_audio}"
+        audio_data = f"data:{audio_mime};base64,{b64_audio}"
 
         encoded_text = urllib.parse.quote(cleaned_text)
         audio_url = f"/api/jarvis/speak?text={encoded_text}"

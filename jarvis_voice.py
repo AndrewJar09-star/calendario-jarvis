@@ -29,7 +29,12 @@ import numpy as np
 import scipy.signal
 import scipy.io.wavfile
 import edge_tts
-import pygame
+try:
+    import pygame
+    PYGAME_AVAILABLE = True
+except ImportError:
+    pygame = None
+    PYGAME_AVAILABLE = False
 
 from database import (
     get_all_events_with_conflicts,
@@ -76,6 +81,8 @@ _mixer_lock = threading.Lock()
 
 def _ensure_mixer():
     global _mixer_initialized
+    if not PYGAME_AVAILABLE:
+        return
     with _mixer_lock:
         if not _mixer_initialized:
             try:
@@ -967,19 +974,27 @@ def synthesize_jarvis_speech(text: str, voice: str = DEFAULT_VOICE) -> Tuple[byt
         logger.warning(f"Errore edge-tts con voce {voice}: {e}, tentativo fallback con {FALLBACK_VOICE}")
         mp3_bytes = asyncio.run(_synthesize_edge_tts(cleaned_text, voice=FALLBACK_VOICE))
 
-    # 4. Decodifica l'MP3 interamente in RAM tramite io.BytesIO (nessun file temporaneo su disco)
-    sound = pygame.mixer.Sound(io.BytesIO(mp3_bytes))
-    raw_samples = pygame.sndarray.array(sound)
-    if raw_samples.ndim == 2:
-        raw_samples = raw_samples[:, 0]  # Mono puro: dimezza il peso del file e raddoppia la velocità di trasmissione
+    # 4. Decodifica l'MP3 interamente in RAM ed applica DSP se pygame è disponibile (locale)
+    if PYGAME_AVAILABLE:
+        try:
+            sound = pygame.mixer.Sound(io.BytesIO(mp3_bytes))
+            raw_samples = pygame.sndarray.array(sound)
+            if raw_samples.ndim == 2:
+                raw_samples = raw_samples[:, 0]  # Mono puro
 
-    # 5. Applica il DSP olografico Paul Bettany
-    dsp_samples = apply_jarvis_dsp(raw_samples, sample_rate=SAMPLE_RATE)
+            # 5. Applica il DSP olografico Paul Bettany
+            dsp_samples = apply_jarvis_dsp(raw_samples, sample_rate=SAMPLE_RATE)
 
-    # 6. Salva in formato WAV PCM standard in memoria
-    wav_buffer = io.BytesIO()
-    scipy.io.wavfile.write(wav_buffer, SAMPLE_RATE, dsp_samples)
-    wav_bytes = wav_buffer.getvalue()
+            # 6. Salva in formato WAV PCM standard in memoria
+            wav_buffer = io.BytesIO()
+            scipy.io.wavfile.write(wav_buffer, SAMPLE_RATE, dsp_samples)
+            wav_bytes = wav_buffer.getvalue()
+        except Exception as exc:
+            logger.warning(f"Decodifica pygame non riuscita ({exc}), uso stream audio diretto")
+            wav_bytes = mp3_bytes
+    else:
+        # Su server cloud headless (es. Render/Linux), usa direttamente l'audio neurale generato
+        wav_bytes = mp3_bytes
 
     # 7. Registra in RAM e su Disco per risposte future istantanee
     with _RAM_CACHE_LOCK:
@@ -1035,7 +1050,7 @@ def prewarm_jarvis_cache(events: list = None):
 # RIPRODUZIONE AUDIO ASINCRONA LOCALE (Non-blocking)
 # =====================================================================
 
-_current_sound: Optional[pygame.mixer.Sound] = None
+_current_sound: Optional[Any] = None
 _play_lock = threading.Lock()
 
 def play_jarvis_speech(text: str, blocking: bool = False) -> str:
@@ -1044,15 +1059,18 @@ def play_jarvis_speech(text: str, blocking: bool = False) -> str:
     direttamente sugli altoparlanti locali in modo asincrono.
     """
     global _current_sound
-    _ensure_mixer()
-
     wav_bytes, cleaned_text = synthesize_jarvis_speech(text)
+
+    if not PYGAME_AVAILABLE:
+        return cleaned_text
+
+    _ensure_mixer()
 
     def _play_worker():
         global _current_sound
         with _play_lock:
             try:
-                if pygame.mixer.get_init():
+                if pygame and pygame.mixer and pygame.mixer.get_init():
                     pygame.mixer.stop()
                     wav_io = io.BytesIO(wav_bytes)
                     sound = pygame.mixer.Sound(wav_io)
@@ -1076,8 +1094,10 @@ def play_jarvis_speech(text: str, blocking: bool = False) -> str:
 
 def stop_jarvis_speech():
     """Interrompe immediatamente qualsiasi riproduzione vocale in corso."""
+    if not PYGAME_AVAILABLE or not pygame:
+        return
     with _play_lock:
-        if pygame.mixer.get_init():
+        if pygame.mixer and pygame.mixer.get_init():
             try:
                 pygame.mixer.stop()
             except Exception:
