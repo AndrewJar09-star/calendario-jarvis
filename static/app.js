@@ -10,7 +10,7 @@
 const isMobileInitial = typeof window !== 'undefined' && window.innerWidth <= 768;
 const STATE = {
   events: [],
-  currentView: isMobileInitial ? 'month' : 'week', // Su smartphone apre direttamente la panoramica Mese completa
+  currentView: 'week', // Identica a PC come richiesto dall'utente (visualizzazione Settimana con 7 giorni e turni)
   activeTab: 'calendar',
   selectedDate: new Date('2026-10-14T09:30:00'), // Default matches screenshot: 14 Ottobre 2026
   miniCalMonth: new Date('2026-10-01'), // Mini calendar view month
