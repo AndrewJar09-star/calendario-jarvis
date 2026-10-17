@@ -76,46 +76,49 @@
       <button class="hud-today-btn" id="hud-btn-today" aria-label="Vai a Oggi">Oggi</button>
     </div>
 
-    <!-- J.A.R.V.I.S. Core Capsule in Top Header (Sempre visibile, mai coperto) -->
-    <div class="hud-header-jarvis" id="hud-header-jarvis">
-      <button
-        class="header-reactor-btn"
-        id="header-reactor-btn"
-        aria-label="Attiva riconoscimento vocale J.A.R.V.I.S."
-        title="Tocca per parlare con J.A.R.V.I.S."
-      >
-        <div class="header-reactor-ring"></div>
-        <div class="header-reactor-core">
-          <img src="/static/icons/jarvis-reactor.png?v=2" alt="J.A.R.V.I.S." class="header-reactor-img" />
+    <!-- Contenitore Riga 2: J.A.R.V.I.S. + Controlli (G, Sett, Mese, Cerca, Impostazioni, Collega) AFFIANCO -->
+    <div class="header-bottom-hud" id="header-bottom-hud">
+      <!-- J.A.R.V.I.S. Core Capsule in Top Header (Sempre visibile, mai coperto) -->
+      <div class="hud-header-jarvis" id="hud-header-jarvis">
+        <button
+          class="header-reactor-btn"
+          id="header-reactor-btn"
+          aria-label="Attiva riconoscimento vocale J.A.R.V.I.S."
+          title="Tocca per parlare con J.A.R.V.I.S."
+        >
+          <div class="header-reactor-ring"></div>
+          <div class="header-reactor-core">
+            <img src="/static/icons/jarvis-reactor.png?v=2" alt="J.A.R.V.I.S." class="header-reactor-img" />
+          </div>
+        </button>
+
+        <div class="header-jarvis-text-wrap" id="header-jarvis-text-wrap" role="button" tabindex="0" title="Tocca per attivare la voce J.A.R.V.I.S.">
+          <span class="header-jarvis-name">J.A.R.V.I.S.</span>
+          <span class="header-jarvis-sep">//</span>
+          <span class="header-jarvis-status" id="header-jarvis-status">TOCCA PER PARLARE</span>
         </div>
-      </button>
+        <div class="header-speech-bubble" id="header-speech-bubble" style="display:none;">
+          <span id="header-speech-text">Pronto.</span>
+        </div>
+      </div>
 
-      <div class="header-jarvis-text-wrap" id="header-jarvis-text-wrap" role="button" tabindex="0" title="Tocca per attivare la voce J.A.R.V.I.S.">
-        <span class="header-jarvis-name">J.A.R.V.I.S.</span>
-        <span class="header-jarvis-sep">//</span>
-        <span class="header-jarvis-status" id="header-jarvis-status">TOCCA PER PARLARE</span>
+      <div class="header-right-hud">
+        <div class="hud-view-switcher" role="radiogroup" aria-label="Seleziona visualizzazione">
+          <button class="hud-view-pill" id="view-pill-day" data-view="day" role="radio" aria-checked="false">G</button>
+          <button class="hud-view-pill active" id="view-pill-week" data-view="week" role="radio" aria-checked="true">Sett</button>
+          <button class="hud-view-pill" id="view-pill-month" data-view="month" role="radio" aria-checked="false">Mese</button>
+        </div>
+        <button class="hud-square-btn" id="hud-btn-search" aria-label="Cerca eventi o partite" title="Cerca eventi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <button class="hud-square-btn" id="hud-btn-settings" aria-label="Impostazioni &amp; Tutorial J.A.R.V.I.S." title="Impostazioni &amp; Tutorial Comandi J.A.R.V.I.S.">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+        <button class="btn-phone-sync-compact" id="btn-phone-sync" aria-label="Collega Telefono &amp; Google Calendar" title="Collega Google Calendar &amp; Smartphone">
+          <span>🔗</span>
+        </button>
+        <time class="system-clock" id="clock" aria-label="Orario corrente">00:00:00</time>
       </div>
-      <div class="header-speech-bubble" id="header-speech-bubble" style="display:none;">
-        <span id="header-speech-text">Pronto.</span>
-      </div>
-    </div>
-
-    <div class="header-right-hud">
-      <div class="hud-view-switcher" role="radiogroup" aria-label="Seleziona visualizzazione">
-        <button class="hud-view-pill" id="view-pill-day" data-view="day" role="radio" aria-checked="false">G</button>
-        <button class="hud-view-pill active" id="view-pill-week" data-view="week" role="radio" aria-checked="true">Sett</button>
-        <button class="hud-view-pill" id="view-pill-month" data-view="month" role="radio" aria-checked="false">Mese</button>
-      </div>
-      <button class="hud-square-btn" id="hud-btn-search" aria-label="Cerca eventi o partite" title="Cerca eventi">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      </button>
-      <button class="hud-square-btn" id="hud-btn-settings" aria-label="Impostazioni &amp; Tutorial J.A.R.V.I.S." title="Impostazioni &amp; Tutorial Comandi J.A.R.V.I.S.">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-      </button>
-      <button class="btn-phone-sync-compact" id="btn-phone-sync" aria-label="Collega Telefono &amp; Google Calendar" title="Collega Google Calendar &amp; Smartphone">
-        <span>🔗</span>
-      </button>
-      <time class="system-clock" id="clock" aria-label="Orario corrente">00:00:00</time>
     </div>
   </header>
 
