@@ -154,6 +154,18 @@ function formatYMD(d) {
   return `${year}-${month}-${day}`;
 }
 
+function toSqlDateTime(d) {
+  if (!d) return '';
+  const dt = (d instanceof Date) ? d : new Date(d);
+  const year = dt.getFullYear();
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  const hours = String(dt.getHours()).padStart(2, '0');
+  const mins = String(dt.getMinutes()).padStart(2, '0');
+  const secs = String(dt.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${mins}:${secs}`;
+}
+
 function isSameDay(d1, d2) {
   if (!d1 || !d2) return false;
   const a = (d1 instanceof Date) ? d1 : new Date(d1);
@@ -240,18 +252,215 @@ function getHudEventStyle(ev) {
   return { class: 'custom', color: '#c084fc', label: 'EVENTO AGGIUNTO', glyph: '📝' };
 }
 
-// ─── Load Events ────────────────────────────────────────────────
+// ─── Local-First Smartphone Storage Engine ──────────────────────────
+const LOCAL_STORAGE_EVENTS_KEY = 'steward_events_local_v2';
+
+function getDefaultSeedEvents() {
+  return [
+    // SSC Napoli (Stadio Maradona)
+    { id: 101, title: "Napoli vs Roma", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-24 18:00:00", call_time: "2026-10-24 14:00:00", notes: "Serie A - Partita di cartello allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 102, title: "Napoli vs Bodø/Glimt", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-20 21:00:00", call_time: "2026-10-20 17:00:00", notes: "Champions League - Notte europea allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 103, title: "Napoli vs Lazio", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-08 12:30:00", call_time: "2026-11-08 08:30:00", notes: "Serie A - Anticipo domenicale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 104, title: "Napoli vs Torino", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-21 20:45:00", call_time: "2026-11-21 16:45:00", notes: "Serie A - Anticipo serale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 105, title: "Napoli vs Lecce", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-05 20:45:00", call_time: "2026-12-05 16:45:00", notes: "Serie A - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 106, title: "Napoli vs Club Bruges", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-08 21:00:00", call_time: "2026-12-08 17:00:00", notes: "Champions League - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 107, title: "Napoli vs Milan", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-13 20:45:00", call_time: "2026-12-13 16:45:00", notes: "Serie A - Big match allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 108, title: "Napoli vs Fiorentina", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-16 21:00:00", call_time: "2026-12-16 17:00:00", notes: "Coppa Italia - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 109, title: "Napoli vs Cagliari", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-07 20:45:00", call_time: "2027-01-07 16:45:00", notes: "Serie A - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 110, title: "Napoli vs Inter", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-31 15:00:00", call_time: "2027-01-31 11:00:00", notes: "Serie A - Scontro al vertice allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 111, title: "Napoli vs Juventus", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-02-14 15:00:00", call_time: "2027-02-14 11:00:00", notes: "Serie A - Derby d'Italia al Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 112, title: "Napoli vs Bologna", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-01 18:00:00", call_time: "2026-11-01 14:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 113, title: "Napoli vs Feyenoord", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-04 21:00:00", call_time: "2026-11-04 17:00:00", notes: "Champions League – Notte europea", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 114, title: "Napoli vs Empoli", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-29 15:00:00", call_time: "2026-11-29 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    // SS Juve Stabia (Stadio Romeo Menti)
+    { id: 201, title: "Juve Stabia vs Südtirol", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-18 15:00:00", call_time: "2026-10-18 11:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 202, title: "Juve Stabia vs Verona", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-28 20:00:00", call_time: "2026-10-28 16:00:00", notes: "Serie B - Turno infrasettimanale Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 203, title: "Juve Stabia vs Arezzo", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-07 15:00:00", call_time: "2026-11-07 11:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 204, title: "Juve Stabia vs Catanzaro", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-24 19:00:00", call_time: "2026-11-24 15:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 205, title: "Juve Stabia vs Benevento", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-05 19:30:00", call_time: "2026-12-05 15:30:00", notes: "Serie B - Derby campano Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 206, title: "Juve Stabia vs Padova", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-12 15:00:00", call_time: "2026-12-12 11:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 207, title: "Juve Stabia vs Sampdoria", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-01-09 15:00:00", call_time: "2027-01-09 11:00:00", notes: "Serie B - Big match allo Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    // Casertana FC (Stadio Alberto Pinto)
+    { id: 301, title: "Casertana vs Bari", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-10-23 20:30:00", call_time: "2026-10-23 16:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto, Caserta", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 302, title: "Casertana vs Casarano", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-07 14:30:00", call_time: "2026-11-07 10:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 303, title: "Casertana vs Salernitana", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-20 20:30:00", call_time: "2026-11-20 16:30:00", notes: "Serie C Girone C - Derby campano", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 304, title: "Casertana vs Potenza", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-05 17:30:00", call_time: "2026-12-05 13:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 305, title: "Casertana vs Crotone", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-19 17:30:00", call_time: "2026-12-19 13:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    // Mostra d'Oltremare (mostradoltremare.it)
+    { id: 401, title: "Concorso Comune di Bacoli – Prove scritte", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 09:30:00", call_time: "2026-10-16 08:30:00", notes: "Padiglioni Mostra d'Oltremare - Concorso pubblico", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 402, title: "LTS EXPO NAPOLI 2026 – 2^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 10:00:00", call_time: "2026-10-16 08:30:00", notes: "Esposizione fieristica presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 403, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 21:00:00", call_time: "2026-10-16 08:30:00", notes: "Teatro Mediterraneo - Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 404, title: "TUTTO SPOSI 2026 – 37^ edizione – primo weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-17 10:30:00", call_time: "2026-10-17 08:30:00", notes: "Fiera del Wedding e Arredamento", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 405, title: "PHARMEXPO 2026 – 18^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-23 10:00:00", call_time: "2026-10-23 08:30:00", notes: "Salone dell'industria farmaceutica del Mediterraneo", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 406, title: "TUTTO SPOSI 2026 – 37^ edizione – 2° weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-24 10:30:00", call_time: "2026-10-24 08:30:00", notes: "Fiera del Wedding e Arredamento - Secondo weekend", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 407, title: "ORIENTASUD 2026 – 27^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-04 08:00:00", call_time: "2026-11-04 08:00:00", notes: "Salone dell'orientamento universitario e professionale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 408, title: "CREATTIVA 2026 – 15^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-05 10:00:00", call_time: "2026-11-05 08:30:00", notes: "Fiera delle arti manuali e bricolage", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 409, title: "AESTETICA 2026 – 29^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-07 10:00:00", call_time: "2026-11-07 08:30:00", notes: "Fiera dell'estetica, salute e benessere", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 410, title: "GUSTUS 2026 – 12^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-15 10:00:00", call_time: "2026-11-15 08:30:00", notes: "Expo dei sapori mediterranei e agroalimentare", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 411, title: "PADELNESS e SPORT 2026", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-20 10:00:00", call_time: "2026-11-20 08:30:00", notes: "Salone dello sport e del padel", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 412, title: "ARKEDA 2026 – 13^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-27 10:00:00", call_time: "2026-11-27 08:30:00", notes: "Salone dell'architettura e del design", status: "Da confermare", earnings: 0.0, conflict: false }
+  ];
+}
+
+function getLocalEvents() {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_EVENTS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch (e) {
+    console.warn('Errore lettura LocalStorage:', e);
+    return null;
+  }
+}
+
+function saveLocalEvents(events) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_EVENTS_KEY, JSON.stringify(events));
+  } catch (e) {
+    console.error('Errore scrittura LocalStorage:', e);
+  }
+}
+
+function recomputeLocalConflicts(events) {
+  if (!events || !events.length) return;
+  const byDate = {};
+  events.forEach(e => {
+    if (!e.event_start) return;
+    const d = e.event_start.slice(0, 10);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(e);
+  });
+
+  Object.keys(byDate).forEach(d => {
+    const isConflict = byDate[d].length > 1;
+    byDate[d].forEach(ev => {
+      ev.conflict = isConflict;
+    });
+  });
+}
+
+function computeLocalAlertsData(events) {
+  const byDate = {};
+  events.forEach(e => {
+    if (!e.event_start) return;
+    const d = e.event_start.slice(0, 10);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(e);
+  });
+
+  const conflicts = [];
+  Object.keys(byDate).forEach(d => {
+    if (byDate[d].length > 1) {
+      conflicts.push({
+        date: d,
+        count: byDate[d].length,
+        events: byDate[d]
+      });
+    }
+  });
+
+  const changes = events.filter(e => e.updated_flag === 1 || e.updated_flag === true);
+
+  return {
+    conflicts_count: conflicts.length,
+    time_changes_count: changes.length,
+    conflicts: conflicts,
+    time_changes: changes
+  };
+}
+
+// Sincronizzazione intelligente col backend: scarica partite nuove e aggiorna date/orari cambiati senza toccare le scelte dell'utente
+async function syncSoftWithBackend() {
+  try {
+    const res = await apiGet('/api/events');
+    if (!res || !res.events || !res.events.length) return;
+
+    let hasChanges = false;
+    res.events.forEach(remoteEv => {
+      // Cerca l'evento per ID oppure per corrispondenza di titolo e sede (es. "Napoli vs Roma" allo Stadio Maradona)
+      const exists = STATE.events.find(e => 
+        e.id === remoteEv.id || 
+        (e.title && remoteEv.title && e.title.trim().toLowerCase() === remoteEv.title.trim().toLowerCase() && e.venue === remoteEv.venue)
+      );
+
+      if (exists) {
+        // Se Lega Calcio o Mostra d'Oltremare ha spostato data o orario (anticipo/posticipo)
+        if (remoteEv.event_start && exists.event_start !== remoteEv.event_start) {
+          console.log(`[SYNC] Cambio data/orario per "${exists.title}": da ${exists.event_start} a ${remoteEv.event_start}`);
+          exists.event_start = remoteEv.event_start;
+          exists.call_time = remoteEv.call_time || remoteEv.event_start;
+          exists.updated_flag = true;
+          hasChanges = true;
+        }
+      } else {
+        // Nuovo evento aggiunto in calendario
+        STATE.events.push(remoteEv);
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      recomputeLocalConflicts(STATE.events);
+      saveLocalEvents(STATE.events);
+      renderHudCalendar();
+      renderNextShift();
+      renderShiftsList();
+      renderLocalAlerts();
+    }
+  } catch (e) {
+    // Normale quando il server è spento o l'utente è offline
+  }
+}
+
+// ─── Load Events (Local-First Engine) ───────────────────────────
 async function loadEvents() {
   try {
-    const data = await apiGet('/api/events');
-    STATE.events = data.events || [];
+    // 1. Legge prima dal database locale dello smartphone (LocalStorage)
+    let local = getLocalEvents();
+
+    if (local && local.length > 0) {
+      STATE.events = local;
+      console.log(`[STORAGE] Caricati ${local.length} eventi dal database locale dello smartphone`);
+    } else {
+      // Prima apertura sul telefono: prova il server, altrimenti carica il seed integrato
+      let initialEvents = [];
+      try {
+        const remote = await apiGet('/api/events');
+        if (remote && remote.events && remote.events.length > 0) {
+          initialEvents = remote.events;
+        }
+      } catch (err) {
+        console.warn('Backend non raggiungibile alla prima apertura, uso catalogo locale integrato');
+      }
+
+      if (!initialEvents || initialEvents.length === 0) {
+        initialEvents = getDefaultSeedEvents();
+      }
+
+      STATE.events = initialEvents;
+      saveLocalEvents(STATE.events);
+      console.log(`[STORAGE] Database locale inizializzato con ${initialEvents.length} eventi`);
+    }
+
+    recomputeLocalConflicts(STATE.events);
     renderHudCalendar();
     renderNextShift();
     renderShiftsList();
-    await loadAlerts();
+    renderLocalAlerts();
+
+    // Sincronizzazione discreta in background con nuove partite (senza toccare gli stati/guadagni dell'utente)
+    syncSoftWithBackend();
   } catch (err) {
     console.error('Errore caricamento eventi:', err);
-    showToast('Errore caricamento eventi', 'error');
+    if (!STATE.events || STATE.events.length === 0) {
+      STATE.events = getDefaultSeedEvents();
+      recomputeLocalConflicts(STATE.events);
+      renderHudCalendar();
+      renderNextShift();
+      renderShiftsList();
+      renderLocalAlerts();
+    }
   }
 }
 
@@ -969,21 +1178,33 @@ async function confirmEvent(status) {
   if (!STATE.selectedEvent) return;
   const currentEv = STATE.selectedEvent;
 
-  try {
-    await apiPost(`/api/events/${currentEv.id}/status`, { status });
-    closeBottomSheet();
-    showToast(`Stato aggiornato: ${status}`, 'success');
-    await loadEvents();
-
-    // Se l'utente ha impostato 'Lavoro io', apri la schermata per inserire quanti soldi guadagna da quella chiamata
-    if (status.toLowerCase().includes('lavoro')) {
-      const refreshedEv = STATE.events.find(e => e.id === currentEv.id) || currentEv;
-      setTimeout(() => openEarningsModal(refreshedEv), 180);
-    }
-  } catch (err) {
-    console.error('Errore aggiornamento stato:', err);
-    showToast('Errore aggiornamento stato', 'error');
+  // 1. Aggiorna SUBITO nel database locale dello smartphone
+  const target = STATE.events.find(e => e.id === currentEv.id);
+  if (target) {
+    target.status = status;
+    saveLocalEvents(STATE.events);
   }
+
+  closeBottomSheet();
+  showToast(`Stato aggiornato: ${status}`, 'success');
+
+  // Re-render immediato da memoria locale
+  recomputeLocalConflicts(STATE.events);
+  renderHudCalendar();
+  renderNextShift();
+  renderShiftsList();
+  renderLocalAlerts();
+
+  // Se l'utente ha impostato 'Lavoro io', apri la schermata per inserire quanti soldi guadagna da quella chiamata
+  if (status.toLowerCase().includes('lavoro')) {
+    const refreshedEv = STATE.events.find(e => e.id === currentEv.id) || currentEv;
+    setTimeout(() => openEarningsModal(refreshedEv), 180);
+  }
+
+  // Notifica al server in background se online (silenzioso se offline)
+  try {
+    apiPost(`/api/events/${currentEv.id}/status`, { status }).catch(() => {});
+  } catch (err) {}
 }
 
 // ─── Earnings Modal Component ("Piccola schermata" guadagno) ─────
@@ -1053,19 +1274,28 @@ async function handleEarningsSubmit(e) {
     }
   }
 
-  try {
-    await apiPost(`/api/events/${ev.id}/earnings`, { earnings: amount });
-    closeEarningsModal();
-    if (amount !== null) {
-      showToast(`💰 Guadagno salvato: €${amount.toFixed(2)}`, 'success');
-    } else {
-      showToast('Compenso rimosso', 'info');
-    }
-    await loadEvents();
-  } catch (err) {
-    console.error('Errore salvataggio guadagno:', err);
-    showToast('Errore durante il salvataggio del guadagno', 'error');
+  // 1. Salva SUBITO nel database locale dello smartphone
+  const target = STATE.events.find(e => e.id === ev.id);
+  if (target) {
+    target.earnings = amount;
+    saveLocalEvents(STATE.events);
   }
+
+  closeEarningsModal();
+  if (amount !== null) {
+    showToast(`💰 Guadagno salvato: €${amount.toFixed(2)}`, 'success');
+  } else {
+    showToast('Compenso rimosso', 'info');
+  }
+
+  renderHudCalendar();
+  renderNextShift();
+  renderShiftsList();
+
+  // Sincronizza col backend in background se online
+  try {
+    apiPost(`/api/events/${ev.id}/earnings`, { earnings: amount }).catch(() => {});
+  } catch (err) {}
 }
 
 async function deleteCurrentEvent() {
@@ -1078,15 +1308,22 @@ async function deleteCurrentEvent() {
 
   if (!window.confirm(confirmMsg)) return;
 
+  // 1. Elimina SUBITO dal database locale dello smartphone
+  STATE.events = STATE.events.filter(e => e.id !== ev.id);
+  saveLocalEvents(STATE.events);
+
+  closeBottomSheet();
+  showToast(`Evento "${ev.title}" eliminato con successo!`, 'success');
+
+  recomputeLocalConflicts(STATE.events);
+  renderHudCalendar();
+  renderNextShift();
+  renderShiftsList();
+  renderLocalAlerts();
+
   try {
-    await apiDelete(`/api/events/${ev.id}`);
-    closeBottomSheet();
-    showToast(`Evento "${ev.title}" eliminato con successo!`, 'success');
-    await loadEvents();
-  } catch (err) {
-    console.error('Errore durante l\'eliminazione:', err);
-    showToast(`Errore durante l'eliminazione: ${err.message}`, 'error');
-  }
+    apiDelete(`/api/events/${ev.id}`).catch(() => {});
+  } catch (err) {}
 }
 
 // ─── Sync ───────────────────────────────────────────────────────
@@ -1562,6 +1799,179 @@ function isFootballMatch(event) {
   return false;
 }
 
+// ─── Local J.A.R.V.I.S. NLP Engine (Per Smartphone Offline & Privacy) ───
+function executeLocalJarvisCommand(cmd) {
+  const lower = (cmd || '').toLowerCase().trim();
+
+  // 1. Inserimento evento / turno / appuntamento
+  if (lower.startsWith('inserisci') || lower.startsWith('aggiungi') || lower.startsWith('crea') || lower.startsWith('segna')) {
+    // Estrazione paga / compenso
+    let earnings = 0.0;
+    const payMatch = lower.match(/(?:paga|compenso|guadagno|con)\s+(\d+(?:[.,]\d+)?)\s*(?:euro|€)?/i);
+    if (payMatch) {
+      earnings = parseFloat(payMatch[1].replace(',', '.'));
+    }
+
+    // Estrazione ora
+    let hour = 10, minute = 0;
+    const timeMatch = lower.match(/alle\s+(\d{1,2})(?::(\d{2})|\s+e\s+(\d{2})|\s+e\s+mezza|\s+e\s+trenta)?/i);
+    if (timeMatch) {
+      hour = parseInt(timeMatch[1], 10);
+      if (timeMatch[2]) minute = parseInt(timeMatch[2], 10);
+      else if (timeMatch[3]) minute = parseInt(timeMatch[3], 10);
+      else if (lower.includes('mezza') || lower.includes('trenta')) minute = 30;
+    }
+
+    // Estrazione data
+    let eventDate = new Date(STATE.selectedDate);
+    const months = {
+      gennaio: 0, febbraio: 1, marzo: 2, aprile: 3, maggio: 4, giugno: 5,
+      luglio: 6, agosto: 7, settembre: 8, ottobre: 9, novembre: 10, dicembre: 11
+    };
+    const dateMatch = lower.match(/(?:il\s+)?(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)/i);
+    if (dateMatch) {
+      const day = parseInt(dateMatch[1], 10);
+      const mIdx = months[dateMatch[2].toLowerCase()];
+      const year = eventDate.getFullYear() || 2026;
+      eventDate = new Date(year, mIdx, day, hour, minute, 0);
+    } else if (lower.includes('domani')) {
+      eventDate.setDate(eventDate.getDate() + 1);
+      eventDate.setHours(hour, minute, 0, 0);
+    } else if (lower.includes('dopodomani')) {
+      eventDate.setDate(eventDate.getDate() + 2);
+      eventDate.setHours(hour, minute, 0, 0);
+    } else {
+      eventDate.setHours(hour, minute, 0, 0);
+    }
+
+    // Estrazione titolo
+    let cleanTitle = lower
+      .replace(/^(?:jarvis\s+)?(?:inserisci|aggiungi|crea|segna)\s+(?:l'evento|il turno|l'appuntamento|evento|turno|appuntamento)?/i, '')
+      .replace(/(?:il\s+)?\d{1,2}\s+[a-z]+/gi, '')
+      .replace(/domani|dopodomani/gi, '')
+      .replace(/alle\s+\d{1,2}(?::\d{2}|\s+e\s+\d{2}|\s+e\s+mezza|\s+e\s+trenta)?/gi, '')
+      .replace(/(?:paga|compenso|guadagno|con)\s+\d+(?:[.,]\d+)?\s*(?:euro|€)?/gi, '')
+      .replace(/^(?:di|per|a|del)\s+/i, '')
+      .trim();
+
+    if (!cleanTitle) cleanTitle = 'Impegno Personale';
+    cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+
+    const startStr = toSqlDateTime(eventDate);
+    const newEv = {
+      id: Date.now(),
+      title: cleanTitle,
+      venue: 'Personale',
+      category: 'CUSTOM',
+      event_start: startStr,
+      call_time: startStr,
+      notes: earnings > 0 ? `Compenso: €${earnings.toFixed(2)}` : 'Aggiunto via J.A.R.V.I.S.',
+      status: 'Lavoro io',
+      earnings: earnings,
+      conflict: false
+    };
+
+    STATE.events.push(newEv);
+    saveLocalEvents(STATE.events);
+    recomputeLocalConflicts(STATE.events);
+    STATE.selectedDate = eventDate;
+    renderHudCalendar();
+    renderNextShift();
+    renderShiftsList();
+    renderLocalAlerts();
+
+    const payText = earnings > 0 ? ` con compenso di ${earnings.toFixed(0)} euro` : '';
+    jarvisSpeak(`Ho inserito ${cleanTitle} per il ${formatDate(startStr)} alle ore ${formatTime(startStr)}${payText} nel tuo database locale.`);
+    showToast(`Evento "${cleanTitle}" creato!`, 'success');
+    return true;
+  }
+
+  // 2. Controllo disponibilità su data ("ho qualcosa il 18 ottobre?", "sono libero il 20?")
+  if (lower.includes('ho qualcosa') || lower.includes('sono libero') || lower.includes('impegni il') || lower.includes('cosa devo fare')) {
+    const months = {
+      gennaio: '01', febbraio: '02', marzo: '03', aprile: '04', maggio: '05', giugno: '06',
+      luglio: '07', agosto: '08', settembre: '09', ottobre: '10', novembre: '11', dicembre: '12'
+    };
+    const dateMatch = lower.match(/(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)/i);
+    let targetYMD = '';
+    if (dateMatch) {
+      const d = dateMatch[1].padStart(2, '0');
+      const m = months[dateMatch[2].toLowerCase()];
+      targetYMD = `2026-${m}-${d}`;
+    } else if (lower.includes('domani')) {
+      const tom = new Date();
+      tom.setDate(tom.getDate() + 1);
+      targetYMD = formatYMD(tom);
+    }
+
+    if (targetYMD) {
+      const dayEvs = STATE.events.filter(e => e.event_start && e.event_start.startsWith(targetYMD));
+      if (!dayEvs.length) {
+        jarvisSpeak(`Non hai alcun impegno in programma per il ${formatDate(targetYMD + ' 10:00:00')}. Sei completamente libero.`);
+        return true;
+      }
+      const riposoEvs = dayEvs.filter(e => (e.status || '').toLowerCase().includes('riposo'));
+      const activeEvs = dayEvs.filter(e => !(e.status || '').toLowerCase().includes('riposo'));
+
+      if (activeEvs.length > 0) {
+        const ev = activeEvs[0];
+        jarvisSpeak(`Il ${formatDate(targetYMD + ' 10:00:00')} hai in programma ${ev.title} alle ore ${formatTime(ev.event_start)}, con convocazione alle ore ${formatTime(ev.call_time)}.`);
+      } else {
+        const r = riposoEvs[0];
+        jarvisSpeak(`Il ${formatDate(targetYMD + ' 10:00:00')} c'è ${r.title}, ma hai impostato Riposo. Non sei operativo e la giornata è completamente libera per te!`);
+      }
+      return true;
+    }
+  }
+
+  // 3. Cambio stato a voce ("metti casertana su lavoro io", "metti fiera in riposo")
+  if (lower.includes('lavoro io') || lower.includes('riposo') || lower.includes('ignora')) {
+    const isLavoro = lower.includes('lavoro');
+    const newStatus = isLavoro ? 'Lavoro io' : 'Riposo';
+    let target = null;
+    ['napoli', 'stabia', 'casertana', 'mostra', 'fiera', 'roma', 'verona'].forEach(k => {
+      if (!target && lower.includes(k)) {
+        target = STATE.events.find(e => (e.title || '').toLowerCase().includes(k) && isFuture(e.event_start));
+      }
+    });
+
+    if (target) {
+      target.status = newStatus;
+      saveLocalEvents(STATE.events);
+      recomputeLocalConflicts(STATE.events);
+      renderHudCalendar();
+      renderNextShift();
+      renderShiftsList();
+      renderLocalAlerts();
+      jarvisSpeak(`Ho impostato lo stato di ${target.title} su ${newStatus}.`);
+      showToast(`Stato aggiornato: ${newStatus}`, 'success');
+      return true;
+    }
+  }
+
+  // 4. Eliminazione
+  if (lower.includes('elimina') || lower.includes('cancella') || lower.includes('rimuovi')) {
+    const searchTarget = lower.replace(/elimina|cancella|rimuovi|evento|appuntamento|l'evento|il turno|turno/gi, '').trim();
+    if (searchTarget.length >= 2) {
+      const match = STATE.events.find(e => (e.title || '').toLowerCase().includes(searchTarget));
+      if (match) {
+        STATE.events = STATE.events.filter(e => e.id !== match.id);
+        saveLocalEvents(STATE.events);
+        recomputeLocalConflicts(STATE.events);
+        renderHudCalendar();
+        renderNextShift();
+        renderShiftsList();
+        renderLocalAlerts();
+        jarvisSpeak(`Ho eliminato ${match.title} dal tuo calendario.`);
+        showToast(`Evento "${match.title}" eliminato!`, 'info');
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // ─── Voice Commands ──────────────────────────────────────────────
 async function processVoiceCommand(cmd) {
   setJarvisText(`"${cmd}"`);
@@ -1576,7 +1986,8 @@ async function processVoiceCommand(cmd) {
 
   // 1. Tenta elaborazione intelligente via backend J.A.R.V.I.S. (con risposte britanniche e filtro DSP)
   try {
-    const res = await apiPost('/api/jarvis/command', { command: cmd });
+    const playLocal = localStorage.getItem('jarvis_play_local') === 'true';
+    const res = await apiPost('/api/jarvis/command', { command: cmd, play_local: playLocal });
     if (res && res.response) {
       if (res.audio_data) {
         // Riproduzione ISTANTANEA da audio base64: zero attesa del secondo roundtrip!
@@ -1587,7 +1998,25 @@ async function processVoiceCommand(cmd) {
 
       // Se J.A.R.V.I.S. ha modificato il database (creato, cancellato o cambiato stato)
       if (res.action && ['created', 'deleted', 'status_updated'].includes(res.action)) {
-        await loadEvents();
+        if (res.event) {
+          if (res.action === 'created') {
+            const exists = STATE.events.find(e => e.id === res.event.id);
+            if (!exists) STATE.events.push(res.event);
+          } else if (res.action === 'status_updated') {
+            const target = STATE.events.find(e => e.id === res.event.id);
+            if (target) target.status = res.event.status;
+          } else if (res.action === 'deleted') {
+            STATE.events = STATE.events.filter(e => e.id !== res.event.id);
+          }
+          saveLocalEvents(STATE.events);
+          recomputeLocalConflicts(STATE.events);
+          renderHudCalendar();
+          renderNextShift();
+          renderShiftsList();
+          renderLocalAlerts();
+        } else {
+          await loadEvents();
+        }
         if (res.action === 'created') {
           showToast('Evento inserito in agenda da J.A.R.V.I.S.', 'success');
         } else if (res.action === 'deleted') {
@@ -1615,9 +2044,12 @@ async function processVoiceCommand(cmd) {
       return;
     }
   } catch (err) {
-    console.warn('Backend J.A.R.V.I.S. non raggiungibile, utilizzo logica locale:', err);
+    console.warn('Backend J.A.R.V.I.S. non raggiungibile, utilizzo logica locale dello smartphone:', err);
   }
   setJarvisText(`"${cmd}"`);
+
+  // Esegue comandi avanzati direttamente sul database locale dello smartphone (creazione, cancellazione, stato, orari)
+  if (executeLocalJarvisCommand(cmd)) return;
 
   // ── Prossimo turno generico ──
   if (cmd.includes('prossimo turno') || cmd.includes('quando lavoro') || cmd.includes('prossimo servizio')) {
@@ -1989,26 +2421,49 @@ async function handleAddEventSubmit(e) {
   if (!title || !startRaw) return;
 
   const eventStart = startRaw.replace('T', ' ') + ':00';
-
+  let callTime = eventStart;
   try {
-    const res = await apiPost('/api/events', {
-      title,
-      category,
-      venue,
-      event_start: eventStart,
-      notes,
-      status: 'Lavoro io',
-    });
-    showToast('Evento creato con successo!', 'success');
-    closeAddEventModal();
-    await loadEvents();
-    if (res.event) {
-      STATE.selectedDate = new Date(startRaw);
-      renderHudCalendar();
+    const sDate = new Date(startRaw);
+    if (category === 'CALCIO') {
+      const cDate = new Date(sDate.getTime() - 4 * 60 * 60 * 1000);
+      callTime = toSqlDateTime(cDate);
+    } else if (category === 'FIERA') {
+      const cDate = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate(), 8, 30, 0);
+      callTime = toSqlDateTime(cDate);
     }
-  } catch (err) {
-    showToast('Errore durante la creazione: ' + err.message, 'error');
-  }
+  } catch (err) {}
+
+  const newEv = {
+    id: Date.now(),
+    title,
+    category,
+    venue,
+    event_start: eventStart,
+    call_time: callTime,
+    notes,
+    status: 'Lavoro io',
+    earnings: 0.0,
+    conflict: false
+  };
+
+  // 1. Salva SUBITO nel database locale dello smartphone
+  STATE.events.push(newEv);
+  saveLocalEvents(STATE.events);
+
+  showToast('Evento creato con successo!', 'success');
+  closeAddEventModal();
+
+  recomputeLocalConflicts(STATE.events);
+  STATE.selectedDate = new Date(startRaw);
+  renderHudCalendar();
+  renderNextShift();
+  renderShiftsList();
+  renderLocalAlerts();
+
+  // Sincronizza col backend in background se online
+  try {
+    apiPost('/api/events', newEv).catch(() => {});
+  } catch (err) {}
 }
 
 // ─── Event Listeners ────────────────────────────────────────────
@@ -2069,7 +2524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
   });
 
-  // Calendari Lavoro Reale Toggles
+  // Calendari Lavoro Reale Toggles (Sidebar Desktop + Barra Mobile)
   const filterNapoli = document.getElementById('filter-napoli');
   const filterStabia = document.getElementById('filter-stabia');
   const filterCasertana = document.getElementById('filter-casertana');
@@ -2083,6 +2538,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filterCasertana?.checked) STATE.activeCategories.add('CASERTANA');
     if (filterMostra?.checked) STATE.activeCategories.add('MOSTRA');
     if (filterCustom?.checked) STATE.activeCategories.add('CUSTOM');
+
+    // Sincronizza stato pulsanti chip mobile
+    document.querySelectorAll('.m-filter-btn').forEach(btn => {
+      const cat = btn.dataset.category;
+      btn.classList.toggle('active', STATE.activeCategories.has(cat));
+    });
+
     renderHudCalendar();
   }
 
@@ -2091,6 +2553,39 @@ document.addEventListener('DOMContentLoaded', () => {
   filterCasertana?.addEventListener('change', updateCategoryFilters);
   filterMostra?.addEventListener('change', updateCategoryFilters);
   filterCustom?.addEventListener('change', updateCategoryFilters);
+
+  // Click su chip filtri mobile
+  document.querySelectorAll('.m-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.dataset.category;
+      if (STATE.activeCategories.has(cat)) {
+        STATE.activeCategories.delete(cat);
+      } else {
+        STATE.activeCategories.add(cat);
+      }
+      // Sincronizza checkbox desktop corrispondente
+      if (cat === 'NAPOLI' && filterNapoli) filterNapoli.checked = STATE.activeCategories.has(cat);
+      if (cat === 'STABIA' && filterStabia) filterStabia.checked = STATE.activeCategories.has(cat);
+      if (cat === 'CASERTANA' && filterCasertana) filterCasertana.checked = STATE.activeCategories.has(cat);
+      if (cat === 'MOSTRA' && filterMostra) filterMostra.checked = STATE.activeCategories.has(cat);
+      if (cat === 'CUSTOM' && filterCustom) filterCustom.checked = STATE.activeCategories.has(cat);
+
+      btn.classList.toggle('active', STATE.activeCategories.has(cat));
+      renderHudCalendar();
+    });
+  });
+
+  // Sincronizzazione scorrimento orizzontale intestazione giorni e griglia su mobile
+  const weekHeader = document.getElementById('week-header-row');
+  const weekScroller = document.getElementById('week-grid-scroller');
+  if (weekScroller && weekHeader) {
+    weekScroller.addEventListener('scroll', () => {
+      weekHeader.scrollLeft = weekScroller.scrollLeft;
+    }, { passive: true });
+    weekHeader.addEventListener('scroll', () => {
+      weekScroller.scrollLeft = weekHeader.scrollLeft;
+    }, { passive: true });
+  }
 
   // Search Modal
   document.getElementById('hud-btn-search')?.addEventListener('click', openSearchModal);
@@ -2113,8 +2608,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Settings / Phone Sync
-  document.getElementById('hud-btn-settings')?.addEventListener('click', openPhoneSyncModal);
+  // Settings & J.A.R.V.I.S. Tutorial Modal (⚙️)
+  document.getElementById('hud-btn-settings')?.addEventListener('click', openSettingsModal);
+  document.getElementById('btn-close-settings')?.addEventListener('click', closeSettingsModal);
+  document.getElementById('settings-modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('settings-modal-overlay')) closeSettingsModal();
+  });
+
+  // Phone Sync Modal (🔗)
+  document.getElementById('btn-phone-sync')?.addEventListener('click', openPhoneSyncModal);
+  document.getElementById('btn-close-phone-sync')?.addEventListener('click', closePhoneSyncModal);
+  document.getElementById('phone-sync-overlay')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('phone-sync-overlay')) closePhoneSyncModal();
+  });
+
+  // Test Voce J.A.R.V.I.S. Button
+  document.getElementById('btn-test-jarvis-voice')?.addEventListener('click', () => {
+    processVoiceCommand('Jarvis buongiorno, esegui test vocale del sistema');
+  });
+
+  // Local PC Audio Setting Toggle
+  const localAudioToggle = document.getElementById('setting-play-local');
+  if (localAudioToggle) {
+    localAudioToggle.checked = localStorage.getItem('jarvis_play_local') === 'true';
+    localAudioToggle.addEventListener('change', (e) => {
+      localStorage.setItem('jarvis_play_local', e.target.checked ? 'true' : 'false');
+      showToast(e.target.checked ? 'Audio casse PC attivato' : 'Audio casse PC disattivato', 'info');
+    });
+  }
+
+  // Tutorial Example Pills (Click to test & copy)
+  document.querySelectorAll('.cmd-example-pill').forEach(pill => {
+    pill.addEventListener('click', async () => {
+      const cmd = pill.dataset.cmd;
+      if (!cmd) return;
+      try {
+        await navigator.clipboard.writeText(cmd);
+      } catch (err) {}
+      showToast(`Comando avviato: "${cmd}"`, 'info');
+      if (navigator.vibrate) navigator.vibrate(30);
+      processVoiceCommand(cmd);
+    });
+  });
 
   // Add Event Modal
   document.getElementById('btn-quick-add-event')?.addEventListener('click', openAddEventModal);
@@ -2245,9 +2780,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   sheet?.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
 
+  // Reset Database Locale Smartphone (100% isolato per dispositivo)
+  document.getElementById('btn-reset-local-db')?.addEventListener('click', () => {
+    if (confirm('Vuoi ripristinare il calendario allo stato iniziale? Verranno azzerate tutte le tue scelte e i compensi su questo telefono.')) {
+      localStorage.removeItem(LOCAL_STORAGE_EVENTS_KEY);
+      STATE.events = getDefaultSeedEvents();
+      saveLocalEvents(STATE.events);
+      recomputeLocalConflicts(STATE.events);
+      renderHudCalendar();
+      renderNextShift();
+      renderShiftsList();
+      renderLocalAlerts();
+      showToast('Database locale ripristinato con successo!', 'success');
+      closeSettingsModal();
+    }
+  });
+
   // Start app
   init();
 });
+
+// ─── Settings & J.A.R.V.I.S. Tutorial Modal Logic ───────────────
+function openSettingsModal() {
+  const overlay = document.getElementById('settings-modal-overlay');
+  if (!overlay) return;
+
+  const statusText = document.getElementById('local-db-status-text');
+  if (statusText) {
+    statusText.textContent = `Memoria smartphone: ${STATE.events.length} eventi salvati in locale`;
+  }
+
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  if (navigator.vibrate) navigator.vibrate(25);
+}
+
+function closeSettingsModal() {
+  const overlay = document.getElementById('settings-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
 
 // ─── Phone Sync Modal Logic ─────────────────────────────────────
 function openPhoneSyncModal() {
@@ -2295,6 +2868,7 @@ window.STEWARD = {
   loadEvents,
   triggerSync,
   jarvisSpeak,
+  openSettingsModal,
   openPhoneSyncModal,
   cleanJarvisSpeechText,   // Esposto per test rapido
   isFootballMatch,          // Esposto per debug logica partite

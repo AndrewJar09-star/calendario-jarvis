@@ -2,7 +2,7 @@
 <html lang="it" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <meta name="theme-color" content="#060B14" />
   <meta name="description" content="S.T.E.W.A.R.D. OS — Gestione Turni, Convocazioni e Calendari per Steward Professionisti" />
 
@@ -109,10 +109,10 @@
       <button class="hud-square-btn" id="hud-btn-search" aria-label="Cerca eventi o partite" title="Cerca eventi">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       </button>
-      <button class="hud-square-btn" id="hud-btn-settings" aria-label="Impostazioni &amp; Sincronizzazione" title="Impostazioni &amp; Connessione Telefono">
+      <button class="hud-square-btn" id="hud-btn-settings" aria-label="Impostazioni &amp; Tutorial J.A.R.V.I.S." title="Impostazioni &amp; Tutorial Comandi J.A.R.V.I.S.">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
-      <button class="btn-phone-sync-compact" id="btn-phone-sync" aria-label="Sincronizza Telefono" title="Collega Google Calendar &amp; Telefono">
+      <button class="btn-phone-sync-compact" id="btn-phone-sync" aria-label="Collega Telefono &amp; Google Calendar" title="Collega Google Calendar &amp; Smartphone">
         <span>🔗</span>
       </button>
       <time class="system-clock" id="clock" aria-label="Orario corrente">00:00:00</time>
@@ -225,6 +225,15 @@
 
         <!-- Area Principale Griglia Calendario -->
         <div class="hud-main-grid-container" id="hud-main-grid-container">
+
+          <!-- Barra Filtri Rapidi Mobile (Sempre visibile su Smartphone) -->
+          <div class="hud-mobile-filters-bar" id="hud-mobile-filters-bar">
+            <button type="button" class="m-filter-btn active dot-napoli" data-category="NAPOLI" title="Filtra Napoli">🔵 Napoli</button>
+            <button type="button" class="m-filter-btn active dot-stabia" data-category="STABIA" title="Filtra Juve Stabia">🟡 Stabia</button>
+            <button type="button" class="m-filter-btn active dot-casertana" data-category="CASERTANA" title="Filtra Casertana">🔴 Casertana</button>
+            <button type="button" class="m-filter-btn active dot-mostra" data-category="MOSTRA" title="Filtra Mostra">🟢 Mostra</button>
+            <button type="button" class="m-filter-btn active dot-custom" data-category="CUSTOM" title="Filtra Eventi Aggiunti">🟣 Eventi</button>
+          </div>
 
           <!-- Vista Settimana (Principale come nello screenshot) -->
           <div class="hud-week-view" id="hud-week-view">
@@ -562,6 +571,286 @@
 
     </div>
   </div>
+</div>
+
+<!-- HUD Settings & J.A.R.V.I.S. Tutorial Modal -->
+<div id="settings-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title" aria-hidden="true">
+  <div class="modal-container hud-settings-modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-icon">⚙️</span>
+        <div>
+          <h2 class="modal-title" id="modal-settings-title">IMPOSTAZIONI &amp; TUTORIAL J.A.R.V.I.S.</h2>
+          <div class="modal-subtitle">GUIDA OPERATIVA COMPLETA AI COMANDI VOCALI &amp; SISTEMA</div>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="btn-close-settings" aria-label="Chiudi finestra">&times;</button>
+    </div>
+
+    <div class="modal-body hud-settings-body">
+
+      <!-- Scheda Status & Impostazioni Motore Vocale -->
+      <div class="settings-engine-card">
+        <div class="engine-card-header">
+          <div class="engine-identity">
+            <div class="engine-reactor-icon">
+              <img src="/static/icons/jarvis-reactor.png?v=2" alt="J.A.R.V.I.S." class="engine-icon-img" />
+            </div>
+            <div>
+              <div class="engine-title">J.A.R.V.I.S. AI CORE &bull; S.T.E.W.A.R.D. OS</div>
+              <div class="engine-desc">Sintesi Neurale Edge-TTS (GiuseppeMultilingual) + DSP Paul Bettany (100% Gratuito)</div>
+            </div>
+          </div>
+          <span class="engine-badge-live">ONLINE &bull; ATTIVO</span>
+        </div>
+
+        <div class="engine-controls-row">
+          <button type="button" class="btn-engine-test" id="btn-test-jarvis-voice">
+            <span>🔊</span> Esegui Test Voce J.A.R.V.I.S.
+          </button>
+          <label class="engine-toggle-label" title="Riproduce l'audio generato anche dagli altoparlanti del computer locale">
+            <input type="checkbox" id="setting-play-local" />
+            <span class="engine-toggle-text">Riproduci audio anche da casse PC</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Il Grande Riquadro Tutorial J.A.R.V.I.S. -->
+      <div class="jarvis-tutorial-box">
+        <div class="tutorial-box-header">
+          <div class="tutorial-box-title">
+            <span class="tutorial-bulb-icon">💡</span>
+            <div>
+              <h3>COME UTILIZZARE AL MEGLIO J.A.R.V.I.S.</h3>
+              <p>Tocca una qualsiasi frase d'esempio per provarla o copiarla immediatamente!</p>
+            </div>
+          </div>
+          <span class="tutorial-version-pill">GUIDA UFFICIALE v2.4</span>
+        </div>
+
+        <!-- Sezione 1: Inserimento Eventi & Paga -->
+        <div class="tutorial-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge add">1. INSERIMENTO EVENTI &amp; COMPENSO (€)</span>
+            <span class="tutorial-tag">Autonomo &bull; Multi-Evento</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Jarvis estrae automaticamente <strong>titolo, data, orario e paga</strong>. Riconosce la tipologia dell'evento (calcio, fiera o personale) e calcola in autonomia la convocazione (<strong>-4 ore</strong> per le partite allo stadio, <strong>08:30</strong> per le fiere).<br />
+            <strong>Novità:</strong> Puoi inserire eventi <strong>anche se nella stessa data hai già altri turni</strong> (sia a <em>Lavoro io</em> che a <em>Riposo</em>).
+          </p>
+          <div class="tutorial-examples-grid">
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis inserisci turno Fiera del Baratto il 25 ottobre alle 10 con paga di 65 euro">
+              <span class="cmd-quote">«</span>Jarvis inserisci turno Fiera del Baratto il 25 ottobre alle 10 con paga di 65 euro<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Inserisce + Paga €65</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis inserisci turno consegna pizze il 18 ottobre alle 19 con paga 45 euro anche se ho messo riposo">
+              <span class="cmd-quote">«</span>Jarvis inserisci turno consegna pizze il 18 ottobre alle 19 con paga 45 euro anche se ho messo riposo<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Aggiunge su giorno con Riposo</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis aggiungi partita calcetto il 22 ottobre alle 21">
+              <span class="cmd-quote">«</span>Jarvis aggiungi partita calcetto il 22 ottobre alle 21<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Evento Personale</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis registra turno stadio il 24 ottobre alle 18 con compenso 70 euro">
+              <span class="cmd-quote">«</span>Jarvis registra turno stadio il 24 ottobre alle 18 con compenso 70 euro<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Turno + Conv. 14:00</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis crea appuntamento dentista domani alle 15">
+              <span class="cmd-quote">«</span>Jarvis crea appuntamento dentista domani alle 15<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Data Relativa (Domani)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sezione 2: Consultazione Calendario per Data -->
+        <div class="tutorial-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge query">2. LETTURA CALENDARIO &amp; DISPONIBILITÀ DATA</span>
+            <span class="tutorial-tag">Controllo Agenda</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Chiedi a Jarvis cosa c'è in una data specifica o se sei libero. Se ci sono turni impostati su <strong>Riposo/ignora</strong>, Jarvis ti dirà che non farai quel servizio e che <strong>la tua giornata è libera per i tuoi impegni personali</strong> (senza dirti che non sei operativo!). Se ci sono più impegni, li elencherà dettagliatamente.
+          </p>
+          <div class="tutorial-examples-grid">
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis ho qualcosa il 18 ottobre?">
+              <span class="cmd-quote">«</span>Jarvis ho qualcosa il 18 ottobre?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Verifica Turni / Riposo</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis cosa ho il 23 ottobre?">
+              <span class="cmd-quote">«</span>Jarvis cosa ho il 23 ottobre?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Riepilogo Dettagliato</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis sono libero il 25 ottobre?">
+              <span class="cmd-quote">«</span>Jarvis sono libero il 25 ottobre?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Verifica Giornata Libera</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis cosa c'è in programma domani?">
+              <span class="cmd-quote">«</span>Jarvis cosa c'è in programma domani?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Domani</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis ho impegni oggi?">
+              <span class="cmd-quote">«</span>Jarvis ho impegni oggi?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Oggi</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sezione 3: Selezione Stato Lavoro o Riposo -->
+        <div class="tutorial-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge status">3. SELEZIONE STATO "LAVORO IO" O "RIPOSO / IGNORA"</span>
+            <span class="tutorial-tag">Visibilità Dinamica</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Imposta lo stato di qualsiasi turno a voce. Se scegli <strong>"Riposo"</strong>, l'evento scompare dal calendario principale per non affollare la schermata, ma resta <strong>visibile nella sezione Turni</strong> per consentirti di ripensarci. Se rimetti <strong>"Lavoro io"</strong>, l'evento ricompare immediatamente in calendario e puoi aggiornare anche la paga!
+          </p>
+          <div class="tutorial-examples-grid">
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis imposta stato riposo per la Casertana">
+              <span class="cmd-quote">«</span>Jarvis imposta stato riposo per la Casertana<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Nasconde da Cal &bull; Salva in Turni</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis metti riposo per Fiera del Baratto">
+              <span class="cmd-quote">«</span>Jarvis metti riposo per Fiera del Baratto<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Imposta Riposo</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis metti lavoro io per la Casertana con paga 60 euro">
+              <span class="cmd-quote">«</span>Jarvis metti lavoro io per la Casertana con paga 60 euro<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Riappare + Aggiorna Guadagno</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis conferma lavoro io per il prossimo turno">
+              <span class="cmd-quote">«</span>Jarvis conferma lavoro io per il prossimo turno<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Conferma Prossimo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sezione 4: Cancellazione & Eliminazione Definitiva -->
+        <div class="tutorial-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge delete">4. CANCELLAZIONE &amp; ELIMINAZIONE DEFINITIVA</span>
+            <span class="tutorial-tag">Rimozione DB</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Rimuove definitivamente l'evento o appuntamento dal database SQLite. Non c'è bisogno di confermare con ulteriori clic: Jarvis esegue la cancellazione all'istante e aggiorna la schermata.
+          </p>
+          <div class="tutorial-examples-grid">
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis cancella l'evento Fiera del Baratto">
+              <span class="cmd-quote">«</span>Jarvis cancella l'evento Fiera del Baratto<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Elimina per Nome</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis elimina il turno del 25 ottobre">
+              <span class="cmd-quote">«</span>Jarvis elimina il turno del 25 ottobre<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Elimina per Data</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis rimuovi appuntamento dentista">
+              <span class="cmd-quote">«</span>Jarvis rimuovi appuntamento dentista<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Rimuove Impegno</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis disdici l'evento calcetto">
+              <span class="cmd-quote">«</span>Jarvis disdici l'evento calcetto<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Disdice Evento</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sezione 5: Prossimi Turni & Informazioni Squadre -->
+        <div class="tutorial-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge info">5. PROSSIMI TURNI, STADI &amp; FIERE</span>
+            <span class="tutorial-tag">Informazioni Rapide</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Consulta rapidamente i turni di servizio steward e gli orari per gli stadi di casa (Diego Armando Maradona, Romeo Menti, Alberto Pinto) e la Mostra d'Oltremare.
+          </p>
+          <div class="tutorial-examples-grid">
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis quando è il prossimo turno?">
+              <span class="cmd-quote">«</span>Jarvis quando è il prossimo turno?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Orario + Convocazione</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis quando gioca il Napoli al Maradona?">
+              <span class="cmd-quote">«</span>Jarvis quando gioca il Napoli al Maradona?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Partite SSC Napoli</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis prossima partita della Juve Stabia">
+              <span class="cmd-quote">«</span>Jarvis prossima partita della Juve Stabia<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Stadio Romeo Menti</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis quando gioca la Casertana?">
+              <span class="cmd-quote">«</span>Jarvis quando gioca la Casertana?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Stadio Alberto Pinto</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis prossimi eventi alla Mostra d'Oltremare">
+              <span class="cmd-quote">«</span>Jarvis prossimi eventi alla Mostra d'Oltremare<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Fiere &amp; Saloni</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sezione 6: Conflitti, Sincronizzazione & Google Calendar -->
+        <div class="tutorial-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge sync">6. CONFLITTI, SINCRONIZZAZIONE &amp; GOOGLE CALENDAR</span>
+            <span class="tutorial-tag">Utility di Sistema</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Gestisci coincidenze di giornata, attiva gli scraper per scaricare nuovi orari ed esporta le convocazioni sul tuo Google Calendar.
+          </p>
+          <div class="tutorial-examples-grid">
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis ci sono sovrapposizioni o conflitti?">
+              <span class="cmd-quote">«</span>Jarvis ci sono sovrapposizioni o conflitti?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Rilevamento Conflitti</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis aggiungi il prossimo turno a Google Calendar">
+              <span class="cmd-quote">«</span>Jarvis aggiungi il prossimo turno a Google Calendar<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Esporta GCal</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis sincronizza tutti i calendari">
+              <span class="cmd-quote">«</span>Jarvis sincronizza tutti i calendari<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Aggiorna Scraper</span>
+            </div>
+            <div class="cmd-example-pill" role="button" tabindex="0" data-cmd="Jarvis quanti turni ho in programma?">
+              <span class="cmd-quote">«</span>Jarvis quanti turni ho in programma?<span class="cmd-quote">»</span>
+              <span class="cmd-action-tag">Conteggio Turni</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sezione 7: Consigli Utili & Pro Tips -->
+        <div class="tutorial-card pro-tips-card">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge tips">7. PRO TIPS PER PARLARE CON J.A.R.V.I.S.</span>
+            <span class="tutorial-tag">Consigli Pratici</span>
+          </div>
+          <ul class="tips-bullet-list">
+            <li><strong>Come attivare l'ascolto:</strong> Tocca il Reattore Arc blu nell'header superiore (sempre visibile) o la capsula fluttuante in basso; l'anello diventerà rosso pulsante mentre ti ascolta.</li>
+            <li><strong>Dizione naturale e fluida:</strong> Non serve scandire come un robot! Puoi dire date in cifre o a parole (<em>"diciotto ottobre"</em>, <em>"il 25"</em>, <em>"18/10"</em>) o date relative (<em>"domani"</em>, <em>"dopodomani"</em>).</li>
+            <li><strong>Orari flessibili:</strong> Jarvis comprende formati come <em>"alle 15 e trenta"</em>, <em>"alle 20 e 45"</em>, <em>"ore 10"</em>, <em>"alle nove e mezza"</em>.</li>
+            <li><strong>Compenso economico:</strong> Puoi specificare liberamente <em>"con paga di 50 euro"</em>, <em>"compenso 60"</em>, <em>"guadagno 45 euro"</em>, <em>"a 75 euro"</em>.</li>
+            <li><strong>Clicca per provare:</strong> Cliccando su una qualsiasi frase d'esempio in questa schermata, il comando verrà inviato direttamente a Jarvis per provarlo all'istante!</li>
+          </ul>
+        </div>
+
+        <!-- Sezione 8: Database Locale Smartphone & Privacy -->
+        <div class="tutorial-card" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.04);">
+          <div class="tutorial-card-header">
+            <span class="tutorial-card-badge" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.5);">8. DATABASE LOCALE SMARTPHONE (PRIVATO)</span>
+            <span class="tutorial-tag" style="border-color: #10B981; color: #10B981;">100% Personale</span>
+          </div>
+          <p class="tutorial-card-desc">
+            Questo smartphone memorizza i turni, gli stati (<em>"Lavoro io"</em> / <em>"Riposo"</em>) e i tuoi guadagni in un <strong>database locale privato</strong> salvato nella memoria del telefono. Nessuno dei tuoi amici o colleghi vedrà mai le tue modifiche o i tuoi compensi.
+          </p>
+          <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn-voice-test" id="btn-reset-local-db" style="background: rgba(255, 59, 92, 0.15); border-color: rgba(255, 59, 92, 0.5); color: #FF3B5C;" title="Ripristina il calendario iniziale azzerando le modifiche su questo telefono">
+              <span>🔄</span> RIPRISTINA CALENDARIO INIZIALE
+            </button>
+            <span style="font-size: 11px; color: rgba(232, 244, 255, 0.5); font-family: var(--font-mono);" id="local-db-status-text">Memoria telefono: ATTIVA</span>
+          </div>
+        </div>
+
+      </div><!-- /jarvis-tutorial-box -->
+
+    </div><!-- /modal-body -->
+  </div><!-- /modal-container -->
 </div>
 
 <!-- HUD Search Modal -->
