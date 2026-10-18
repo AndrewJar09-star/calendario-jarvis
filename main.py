@@ -150,12 +150,38 @@ class JarvisCommandRequest(BaseModel):
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+@app.get("/sw.js", include_in_schema=False)
+@app.get("/static/sw.js", include_in_schema=False)
+def service_worker():
+    """Serve the Service Worker with strict no-cache headers."""
+    sw_file = STATIC_DIR / "sw.js"
+    if sw_file.exists():
+        return FileResponse(
+            sw_file,
+            media_type="application/javascript",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+    raise HTTPException(status_code=404, detail="Service Worker not found")
+
+
 @app.get("/", include_in_schema=False)
 def root():
-    """Serve the PWA frontend."""
+    """Serve the PWA frontend with strict no-cache headers for instant updates."""
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(index_file, media_type="text/html")
+        return FileResponse(
+            index_file,
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
     # Fallback JSON if static not present
     return {
         "system": "S.T.E.W.A.R.D. OS",

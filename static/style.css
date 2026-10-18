@@ -4398,18 +4398,18 @@ body::before {
   background: rgba(8, 14, 25, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.16);
   border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 12.5px;
+  padding: 11px 14px;
+  font-size: 13px;
   color: #FFFFFF;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
   transition: all 0.2s ease;
   user-select: none;
-  width: 100%;
-  box-sizing: border-box;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .cmd-example-pill:hover {
@@ -4424,10 +4424,10 @@ body::before {
 }
 
 .cmd-phrase-wrap {
-  display: block;
-  width: 100%;
+  display: block !important;
+  width: 100% !important;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: #FFFFFF;
   word-break: normal;
   overflow-wrap: break-word;
@@ -4445,33 +4445,19 @@ body::before {
 }
 
 .cmd-action-tag {
-  font-size: 10px;
+  display: inline-flex !important;
+  align-items: center;
+  font-size: 11px !important;
   font-family: var(--font-mono);
   color: #00E5FF;
   background: rgba(0, 229, 255, 0.12);
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 6px;
   white-space: nowrap;
   border: 1px solid rgba(0, 229, 255, 0.35);
-  align-self: flex-start;
+  align-self: flex-start !important;
   box-shadow: 0 0 8px rgba(0, 229, 255, 0.15);
   letter-spacing: 0.03em;
-}
-
-@media (min-width: 560px) {
-  .cmd-example-pill {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .cmd-phrase-wrap {
-    flex: 1;
-  }
-  .cmd-action-tag {
-    align-self: center;
-    flex-shrink: 0;
-  }
 }
 
 @media (max-width: 480px) {

@@ -34,7 +34,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=2.6.0" />
 
   <!-- FullCalendar v6 -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -611,6 +611,9 @@
           <button type="button" class="btn-engine-test" id="btn-test-jarvis-voice">
             <span>🔊</span> Esegui Test Voce J.A.R.V.I.S.
           </button>
+          <button type="button" class="btn-engine-test" id="btn-force-reload-app" style="background: rgba(0, 229, 255, 0.15); border-color: #00E5FF; color: #00E5FF;" title="Svuota la cache locale dello smartphone e scarica l'ultimissima versione">
+            <span>🔄</span> Ricarica e Svuota Cache
+          </button>
           <label class="engine-toggle-label" title="Riproduce l'audio generato anche dagli altoparlanti del computer locale">
             <input type="checkbox" id="setting-play-local" />
             <span class="engine-toggle-text">Riproduci audio anche da casse PC</span>
@@ -1098,6 +1101,6 @@
   </div>
 </div>
 
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=2.6.0"></script>
 </body>
 </html>

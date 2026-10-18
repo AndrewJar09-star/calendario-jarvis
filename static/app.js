@@ -2493,9 +2493,21 @@ function queryTeam(keyword, teamName) {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
-        .then(reg => console.log('SW registrato:', reg.scope))
+      navigator.serviceWorker.register('/static/sw.js?v=2.6.0', { scope: '/' })
+        .then(reg => {
+          console.log('SW registrato:', reg.scope);
+          // Verifica immediatamente se c'è una nuova versione sul server
+          reg.update();
+        })
         .catch(err => console.warn('SW non registrato:', err));
+    });
+
+    // Se un nuovo Service Worker prende il controllo, ricarica la pagina automaticamente
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!window._swReloading) {
+        window._swReloading = true;
+        window.location.reload();
+      }
     });
   }
 }
@@ -2868,6 +2880,27 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-test-jarvis-voice')?.addEventListener('click', () => {
     unlockMobileAudio();
     processVoiceCommand('Jarvis buongiorno, esegui test vocale del sistema');
+  });
+
+  // Forza Aggiornamento e Svuota Cache Button
+  document.getElementById('btn-force-reload-app')?.addEventListener('click', async () => {
+    showToast('Svuotamento cache in corso...', 'info');
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+    } catch (e) {
+      console.warn('Errore pulizia cache:', e);
+    }
+    showToast('Cache azzerata! Ricaricamento...', 'success');
+    setTimeout(() => {
+      window.location.href = window.location.origin + '/?t=' + Date.now();
+    }, 400);
   });
 
   // Local PC Audio Setting Toggle

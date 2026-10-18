@@ -3,15 +3,15 @@
    Strategia: Network-first con cache fallback per offline
    ================================================================ */
 
-const CACHE_NAME = 'steward-os-v4';
-const STATIC_CACHE = 'steward-static-v4';
+const CACHE_NAME = 'steward-os-v6';
+const STATIC_CACHE = 'steward-static-v6';
 
 // Assets essenziali da precacherizzare
 const PRECACHE_ASSETS = [
   '/',
   '/static/index.html',
-  '/static/style.css',
-  '/static/app.js',
+  '/static/style.css?v=2.6.0',
+  '/static/app.js?v=2.6.0',
   '/static/manifest.json',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
@@ -31,10 +31,19 @@ const API_PATHS = ['/api/sync', '/api/events', '/api/alerts', '/api/calendar.ics
 
 // ─── Install ───────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE).then((cache) => {
+      return Promise.all(
+        PRECACHE_ASSETS.map((asset) => {
+          return fetch(asset, { cache: 'reload' })
+            .then((response) => {
+              if (response.ok) return cache.put(asset, response);
+            })
+            .catch((err) => console.warn('Precache saltato per:', asset, err));
+        })
+      );
+    })
   );
 });
 
