@@ -783,6 +783,7 @@ function renderHudWeekView() {
 // ─── Auto-Scroll Helper per Scroller Griglia ───────────────────────
 function scrollToEventOrDay(targetYMD) {
   const scroller = document.getElementById('week-grid-scroller');
+  const weekHeader = document.getElementById('week-header-row');
   if (!scroller) return;
 
   const dayEvs = STATE.events.filter(ev => {
@@ -791,12 +792,12 @@ function scrollToEventOrDay(targetYMD) {
     return STATE.activeCategories.has(classifyEventCategory(ev));
   });
 
+  let targetTop = 40;
   if (dayEvs.length > 0) {
     const firstEv = dayEvs[0];
     const timeStr = (firstEv.call_time || firstEv.event_start).split(' ')[1] || '09:00:00';
     const [h, m] = timeStr.split(':').map(Number);
-    const targetTop = Math.max(0, ((h - 8) + m / 60) * 60 - 80);
-    scroller.scrollTo({ top: targetTop, behavior: 'smooth' });
+    targetTop = Math.max(0, ((h - 8) + m / 60) * 60 - 80);
   } else {
     // Se non ci sono eventi sul giorno selezionato, cerca il primo turno visibile della settimana
     const monday = getMonday(STATE.selectedDate);
@@ -814,10 +815,20 @@ function scrollToEventOrDay(targetYMD) {
       }
     }
     if (weekEarliestTop < 9999) {
-      scroller.scrollTo({ top: weekEarliestTop, behavior: 'smooth' });
-    } else {
-      scroller.scrollTo({ top: 40, behavior: 'smooth' });
+      targetTop = weekEarliestTop;
     }
+  }
+
+  // Scroll orizzontale su mobile verso la colonna della data selezionata
+  const targetCol = document.querySelector(`.week-day-column[data-date="${targetYMD}"]`);
+  let targetLeft = scroller.scrollLeft;
+  if (targetCol) {
+    targetLeft = Math.max(0, targetCol.offsetLeft - 30);
+  }
+
+  scroller.scrollTo({ top: targetTop, left: targetLeft, behavior: 'smooth' });
+  if (weekHeader && targetCol) {
+    weekHeader.scrollTo({ left: targetLeft, behavior: 'smooth' });
   }
 }
 
@@ -2002,8 +2013,9 @@ function executeLocalJarvisCommand(cmd) {
       else if (lower.includes('mezza') || lower.includes('trenta')) minute = 30;
     }
 
-    // Estrazione data
-    let eventDate = new Date(STATE.selectedDate);
+    // Estrazione data (con ancoraggio prioritario alla data odierna reale per termini relativi)
+    const realNow = new Date();
+    let eventDate;
     const months = {
       gennaio: 0, febbraio: 1, marzo: 2, aprile: 3, maggio: 4, giugno: 5,
       luglio: 6, agosto: 7, settembre: 8, ottobre: 9, novembre: 10, dicembre: 11
@@ -2012,23 +2024,24 @@ function executeLocalJarvisCommand(cmd) {
     if (dateMatch) {
       const day = parseInt(dateMatch[1], 10);
       const mIdx = months[dateMatch[2].toLowerCase()];
-      const year = eventDate.getFullYear() || 2026;
+      const year = realNow.getFullYear() || 2026;
       eventDate = new Date(year, mIdx, day, hour, minute, 0);
-    } else if (lower.includes('domani')) {
-      eventDate.setDate(eventDate.getDate() + 1);
-      eventDate.setHours(hour, minute, 0, 0);
     } else if (lower.includes('dopodomani')) {
-      eventDate.setDate(eventDate.getDate() + 2);
-      eventDate.setHours(hour, minute, 0, 0);
+      eventDate = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate() + 2, hour, minute, 0);
+    } else if (lower.includes('domani')) {
+      eventDate = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate() + 1, hour, minute, 0);
+    } else if (lower.includes('oggi') || lower.includes('stasera') || lower.includes('stamattina')) {
+      eventDate = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate(), hour, minute, 0);
     } else {
-      eventDate.setHours(hour, minute, 0, 0);
+      const baseDate = (STATE.selectedDate instanceof Date && !isNaN(STATE.selectedDate.getTime())) ? STATE.selectedDate : realNow;
+      eventDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), hour, minute, 0);
     }
 
     // Estrazione titolo
     let cleanTitle = lower
       .replace(/^(?:forza\s+inserimento|forza|inserimento|inserisci|aggiungi|crea|segna|registra|fissa|imposta|programma|metti in calendario|metti in agenda|metti)\s+(?:l'evento|il turno|l'appuntamento|evento|turno|appuntamento|la partita|partita)?/i, '')
       .replace(/(?:il\s+)?\d{1,2}\s+[a-z]+/gi, '')
-      .replace(/domani|dopodomani/gi, '')
+      .replace(/domani|dopodomani|oggi|stasera/gi, '')
       .replace(/alle\s+\d{1,2}(?::\d{2}|\s+e\s+\d{2}|\s+e\s+mezza|\s+e\s+trenta)?/gi, '')
       .replace(/(?:con\s+)?(?:paga|compenso|guadagno|tariffa)(?:\s+(?:di|a|pari\s+a))?\s*\d+(?:[.,]\d+)?\s*(?:euro|€)?/gi, '')
       .replace(/\b\d+(?:[.,]\d+)?\s*(?:euro|€)\b/gi, '')
@@ -2075,10 +2088,12 @@ function executeLocalJarvisCommand(cmd) {
     saveLocalEvents(STATE.events);
     recomputeLocalConflicts(STATE.events);
     STATE.selectedDate = eventDate;
+    STATE.miniCalMonth = new Date(eventDate.getFullYear(), eventDate.getMonth(), 1);
     renderHudCalendar();
     renderNextShift();
     renderShiftsList();
     renderLocalAlerts();
+    setTimeout(() => scrollToEventOrDay(formatYMD(eventDate)), 200);
 
     const payText = earnings > 0 ? ` con compenso di ${earnings.toFixed(0)} euro` : '';
     jarvisSpeak(`Ho inserito ${cleanTitle} per il ${formatDate(startStr)} alle ore ${formatTime(startStr)}${payText} nel tuo database locale.`);
@@ -2098,14 +2113,26 @@ function executeLocalJarvisCommand(cmd) {
       const d = dateMatch[1].padStart(2, '0');
       const m = months[dateMatch[2].toLowerCase()];
       targetYMD = `2026-${m}-${d}`;
+    } else if (lower.includes('dopodomani')) {
+      const aft = new Date();
+      aft.setDate(aft.getDate() + 2);
+      targetYMD = formatYMD(aft);
     } else if (lower.includes('domani')) {
       const tom = new Date();
       tom.setDate(tom.getDate() + 1);
       targetYMD = formatYMD(tom);
+    } else if (lower.includes('oggi') || lower.includes('stasera')) {
+      targetYMD = formatYMD(new Date());
     }
 
     if (targetYMD) {
       const dayEvs = STATE.events.filter(e => e.event_start && e.event_start.startsWith(targetYMD));
+      const targetDateObj = new Date(targetYMD + 'T10:00:00');
+      STATE.selectedDate = targetDateObj;
+      STATE.miniCalMonth = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), 1);
+      renderHudCalendar();
+      setTimeout(() => scrollToEventOrDay(targetYMD), 200);
+
       if (!dayEvs.length) {
         jarvisSpeak(`Non hai alcun impegno in programma per il ${formatDate(targetYMD + ' 10:00:00')}. Sei completamente libero.`);
         return true;
@@ -2204,7 +2231,12 @@ async function processVoiceCommand(cmd) {
   // 1. Tenta elaborazione intelligente via backend J.A.R.V.I.S. (con risposte britanniche e filtro DSP)
   try {
     const playLocal = localStorage.getItem('jarvis_play_local') === 'true';
-    const res = await apiPost('/api/jarvis/command', { command: rawCmd, play_local: playLocal });
+    const clientDateStr = formatYMD(new Date());
+    const res = await apiPost('/api/jarvis/command', {
+      command: rawCmd,
+      play_local: playLocal,
+      client_date: clientDateStr
+    });
 
     // Se nel frattempo è partito un comando più recente, scarta la risposta obsoleta
     if (_currentCommandId !== currentCmdId) {
@@ -2224,13 +2256,45 @@ async function processVoiceCommand(cmd) {
       if (res.action && ['created', 'deleted', 'status_updated'].includes(res.action)) {
         if (res.event) {
           if (res.action === 'created') {
-            const exists = STATE.events.find(e => e.id === res.event.id);
-            if (!exists) STATE.events.push(res.event);
+            // Se l'id coincide con un seed event esistente di diverso titolo, genera un id univoco per evitare collisioni
+            if (STATE.events.some(e => e.id === res.event.id && e.title !== res.event.title)) {
+              res.event.id = Date.now();
+            }
+            // Controllo duplicati: verifica per ID oppure per titolo + data
+            const exists = STATE.events.find(e =>
+              e.id === res.event.id ||
+              ((e.title || '').toLowerCase() === (res.event.title || '').toLowerCase() &&
+               (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10))
+            );
+            if (!exists) {
+              STATE.events.push(res.event);
+            } else {
+              Object.assign(exists, res.event);
+            }
           } else if (res.action === 'status_updated') {
-            const target = STATE.events.find(e => e.id === res.event.id);
-            if (target) target.status = res.event.status;
+            let target = STATE.events.find(e => e.id === res.event.id);
+            if (!target && res.event.title) {
+              target = STATE.events.find(e =>
+                (e.title || '').toLowerCase() === (res.event.title || '').toLowerCase() &&
+                (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10)
+              );
+            }
+            if (target) {
+              target.status = res.event.status;
+              if (res.event.earnings !== undefined && res.event.earnings !== null) {
+                target.earnings = res.event.earnings;
+              }
+            }
           } else if (res.action === 'deleted') {
-            STATE.events = STATE.events.filter(e => e.id !== res.event.id);
+            STATE.events = STATE.events.filter(e => {
+              if (e.id === res.event.id) return false;
+              if (res.event.title &&
+                  (e.title || '').toLowerCase() === (res.event.title || '').toLowerCase() &&
+                  (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10)) {
+                return false;
+              }
+              return true;
+            });
           }
           saveLocalEvents(STATE.events);
           recomputeLocalConflicts(STATE.events);
@@ -2258,7 +2322,7 @@ async function processVoiceCommand(cmd) {
             STATE.selectedDate = evDate;
             STATE.miniCalMonth = new Date(evDate.getFullYear(), evDate.getMonth(), 1);
             renderHudCalendar();
-            setTimeout(() => scrollToEventOrDay(formatYMD(STATE.selectedDate)), 150);
+            setTimeout(() => scrollToEventOrDay(formatYMD(STATE.selectedDate)), 200);
           }
         } catch (e) {
           console.warn('Errore parsing data evento:', e);

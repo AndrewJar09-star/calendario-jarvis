@@ -289,10 +289,16 @@ WORD_NUMBERS = {
     "ventisei": 26, "ventisette": 27, "ventotto": 28, "ventinove": 29, "trenta": 30, "trentuno": 31
 }
 
-def parse_italian_date(text: str) -> Tuple[Optional[datetime], Optional[str], Optional[str]]:
+def parse_italian_date(text: str, reference_date: Optional[str] = None) -> Tuple[Optional[datetime], Optional[str], Optional[str]]:
     t = text.lower()
-    today = datetime.now()
-    default_year = 2026
+    if reference_date:
+        try:
+            today = datetime.strptime(reference_date[:10], "%Y-%m-%d")
+        except Exception:
+            today = datetime.now()
+    else:
+        today = datetime.now()
+    default_year = today.year
 
     # 1. Parole chiave relative
     if "dopodomani" in t:
@@ -475,7 +481,7 @@ def find_best_matching_event(target_text: str, events: list, date_iso: Optional[
     return None
 
 
-def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[str, Any]], Optional[str]]:
+def process_jarvis_command(cmd: str, events: list, client_date: Optional[str] = None) -> Tuple[str, Optional[Dict[str, Any]], Optional[str]]:
     """
     Interpreta un comando vocale o testuale in linguaggio naturale e restituisce
     la risposta ideale in perfetto stile J.A.R.V.I.S. (con 'Signore', tono calmo,
@@ -557,13 +563,14 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
     is_delete_cmd = any(k in cmd_clean for k in ["elimina", "cancella", "rimuovi", "disdici", "annulla"])
 
     if is_add_cmd and not is_delete_cmd:
-        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean, reference_date=client_date)
         time_iso, time_verbal = parse_italian_time(cmd_clean)
         earnings = parse_italian_earnings(cmd_clean)
         title = extract_event_title(cmd_clean, date_raw)
 
         if not date_iso:
-            date_iso = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            ref_today = datetime.strptime(client_date[:10], "%Y-%m-%d") if client_date else datetime.now()
+            date_iso = (ref_today + timedelta(days=1)).strftime("%Y-%m-%d")
 
         event_start = f"{date_iso} {time_iso}"
 
@@ -631,7 +638,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
     # 2. ELIMINAZIONE / CANCELLAZIONE EVENTI
     # ═════════════════════════════════════════════════════════════════
     if any(k in cmd_clean for k in ["elimina", "cancella", "rimuovi", "disdici", "annulla"]):
-        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean, reference_date=client_date)
         clean_target = re.sub(r'\b(?:elimina|cancella|rimuovi|disdici|annulla|l\'|il|la|lo|i|gli|le|evento|appuntamento|turno|partita|del|della|di|jarvis)\b', '', cmd_clean).strip()
         if date_raw:
             clean_target = re.sub(rf'\b(?:il\s+|del\s+)?{re.escape(date_raw)}\b', '', clean_target, flags=re.IGNORECASE).strip()
@@ -651,7 +658,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
     if any(k in cmd_clean for k in ["lavoro io", "riposo", "ignora", "stato lavoro", "stato riposo", "imposta lavoro", "imposta riposo", "seleziona lavoro", "seleziona riposo", "metti lavoro", "metti riposo", "segna riposo", "segna lavoro", "confermo lavoro", "conferma lavoro"]):
         new_status = "Lavoro io" if "lavoro" in cmd_clean else "Riposo"
         earnings = parse_italian_earnings(cmd_clean)
-        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+        date_obj, date_iso, date_raw = parse_italian_date(cmd_clean, reference_date=client_date)
         clean_target = re.sub(r'\b(?:seleziona|imposta|metti|segna|conferma|confermo|stato|lavoro\s+io|lavoro|riposo|ignora|come|per|il|la|l\'|lo|del|della|di|paga|euro|\d+|jarvis)\b', '', cmd_clean).strip()
         if date_raw:
             clean_target = re.sub(rf'\b(?:il\s+|del\s+)?{re.escape(date_raw)}\b', '', clean_target, flags=re.IGNORECASE).strip()
@@ -678,7 +685,7 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
     # ═════════════════════════════════════════════════════════════════
     # 4. LETTURA CALENDARIO PER DATA SPECIFICA ("Ho qualcosa il 18 ottobre?")
     # ═════════════════════════════════════════════════════════════════
-    date_obj, date_iso, date_raw = parse_italian_date(cmd_clean)
+    date_obj, date_iso, date_raw = parse_italian_date(cmd_clean, reference_date=client_date)
     is_date_query = date_iso is not None and (
         any(k in cmd_clean for k in ["ho qualcosa", "cosa ho", "cosa c'è", "cosa ce", "sono libero", "è libera", "e libera", "libera", "libero", "impegni", "impegno", "turni", "turno", "agenda", "calendario", "quando", "c'è qualcosa", "ce qualcosa", "lavoro"]) or len(cmd_clean.split()) <= 4
     )

@@ -140,6 +140,7 @@ class SyncRequest(BaseModel):
 class JarvisCommandRequest(BaseModel):
     command: str = Field(..., example="Quando è il mio prossimo turno?")
     play_local: Optional[bool] = Field(False, description="Se True riproduce l'audio anche sugli altoparlanti locali del PC")
+    client_date: Optional[str] = Field(None, example="2026-10-18", description="Data odierna del client in formato YYYY-MM-DD")
 
 
 # ==========================================
@@ -595,7 +596,7 @@ def jarvis_command_endpoint(payload: JarvisCommandRequest):
     """
     try:
         events = get_all_events_with_conflicts()
-        spoken_text, matched_event, *extra = process_jarvis_command(payload.command, events)
+        spoken_text, matched_event, *extra = process_jarvis_command(payload.command, events, client_date=payload.client_date)
         action = extra[0] if extra else None
 
         # Genera/recupera audio da RAM/Disco cache (0-1 ms se in cache)
