@@ -402,10 +402,10 @@ def extract_event_title(cmd: str, date_raw: Optional[str] = None) -> str:
     t = re.sub(r'\b(?:con\s+stato\s+(?:lavoro\s+io|lavoro|riposo|ignora))\b', '', t).strip()
     t = re.sub(r'\b(?:stato\s+(?:lavoro\s+io|lavoro|riposo|ignora))\b', '', t).strip()
 
-    t = re.sub(r'\b(?:forza\s+inserimento|forza|inserimento|inserisci|aggiungi|crea|registra|segna|fissa|imposta|metti in calendario|metti in agenda|metti|programma|pianifica)\b', '', t).strip()
+    t = re.sub(r'\b(?:forza\s+inserimento|forza|inserimento|inseriscimi|inserisci|aggiungimi|aggiungi|creami|crea|registrami|registra|segnami|segna|fissami|fissa|impostami|imposta|mettimi\s+in\s+calendario|metti\s+in\s+calendario|mettimi\s+in\s+agenda|metti\s+in\s+agenda|mettimi|metti|programma|pianifica)\b', '', t).strip()
     t = re.sub(r'\b(?:un|una|uno|il|lo|la|l\'|i|gli|le)\b', '', t).strip()
     t = re.sub(r'\b(?:evento|appuntamento|impegno|turno|servizio|partita)\b', '', t).strip()
-    t = re.sub(r'\b(?:personale|privato)\b', '', t).strip()
+    t = re.sub(r'\b(?:personale|privato|generico)\b', '', t).strip()
     t = re.sub(r'(?:con\s+)?(?:paga|compenso|guadagno|tariffa)(?:\s+(?:di|a|pari\s+a))?\s*\d+(?:[.,]\d+)?\s*(?:euro|€)?', '', t).strip()
     t = re.sub(r'\b\d+(?:[.,]\d+)?\s*(?:euro|€)(?:\s+di\s+(?:paga|compenso|guadagno))?\b', '', t).strip()
     t = re.sub(r'\b(?:alle\s+(?:ore\s+)?|ore\s+)\d{1,2}(?:[:.]\d{2}|\s+e\s+(?:mezza|mezzo|trenta|\d{1,2}))?\b', '', t).strip()
@@ -415,7 +415,7 @@ def extract_event_title(cmd: str, date_raw: Optional[str] = None) -> str:
     t = re.sub(r'^(?:per\s+il|per|il|del|della|di|a|alle|in|presso)\s+', '', t).strip()
     t = re.sub(r'\s+(?:per\s+il|per|il|del|della|di|a|alle|in|presso)$', '', t).strip()
     t = re.sub(r'[^\w\s\'-]', '', t).strip()
-    if not t or t.lower() in ["qualcosa", "un qualcosa", "qualcos'altro", "generico", "evento generico", "personale", "evento personale"]:
+    if not t or t.lower() in ["qualcosa", "un qualcosa", "qualcos'altro", "generico", "evento generico", "personale", "evento personale", "un evento", "evento", "appuntamento", "impegno", "turno"]:
         return "Impegno Personale"
     return t.strip().capitalize()
 
@@ -553,7 +553,7 @@ def process_jarvis_command(cmd: str, events: list, client_date: Optional[str] = 
 
     is_add_cmd = not (is_gcal_cmd or is_count_cmd or is_status_cmd or is_query_cmd) and (
         any(k in cmd_clean for k in [
-            "inserisci", "aggiungi", "crea", "registra", "segna", "fissa", "forza",
+            "inseriscimi", "inserisci", "aggiungimi", "aggiungi", "creami", "crea", "registrami", "registra", "segnami", "segna", "fissami", "fissa", "forza",
             "metti in calendario", "metti in agenda", "pianifica",
             "nuovo turno", "nuovo evento", "nuova fiera", "nuovo impegno", "nuova partita", "nuovo appuntamento"
         ])

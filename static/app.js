@@ -379,13 +379,15 @@ async function syncSoftWithBackend() {
 
     let hasChanges = false;
     res.events.forEach(remoteEv => {
-      // Cerca l'evento per ID oppure per corrispondenza di titolo e sede (es. "Napoli vs Roma" allo Stadio Maradona)
+      // Cerca l'evento per ID oppure per corrispondenza di titolo e data
       const exists = STATE.events.find(e => 
         e.id === remoteEv.id || 
-        (e.title && remoteEv.title && e.title.trim().toLowerCase() === remoteEv.title.trim().toLowerCase() && e.venue === remoteEv.venue)
+        ((e.title || '').trim().toLowerCase() === (remoteEv.title || '').trim().toLowerCase() &&
+         (e.event_start || '').slice(0, 10) === (remoteEv.event_start || '').slice(0, 10))
       );
 
       if (exists) {
+        exists.id = remoteEv.id; // Sincronizza l'ID ufficiale del database
         // Se Lega Calcio o Mostra d'Oltremare ha spostato data o orario (anticipo/posticipo)
         if (remoteEv.event_start && exists.event_start !== remoteEv.event_start) {
           console.log(`[SYNC] Cambio data/orario per "${exists.title}": da ${exists.event_start} a ${remoteEv.event_start}`);
@@ -1532,6 +1534,20 @@ let _speechAccumulatedTranscript = '';
 let _speechDebounceTimer = null;
 let _speechExecutionLock = false;
 
+function triggerVoiceCommandExecution() {
+  if (_speechDebounceTimer) {
+    clearTimeout(_speechDebounceTimer);
+    _speechDebounceTimer = null;
+  }
+  if (_speechExecutionLock) return;
+  const cmd = (_speechAccumulatedTranscript || '').trim();
+  if (!cmd) return;
+  _speechExecutionLock = true;
+  _speechAccumulatedTranscript = '';
+  try { recognition?.stop(); } catch(e){}
+  processVoiceCommand(cmd);
+}
+
 function initSpeech() {
   if (!SpeechRecognition) {
     console.warn('SpeechRecognition non supportato');
@@ -1550,7 +1566,10 @@ function initSpeech() {
     STATE.isListening = true;
     _speechAccumulatedTranscript = '';
     _speechExecutionLock = false;
-    if (_speechDebounceTimer) clearTimeout(_speechDebounceTimer);
+    if (_speechDebounceTimer) {
+      clearTimeout(_speechDebounceTimer);
+      _speechDebounceTimer = null;
+    }
 
     // Blocca immediatamente qualsiasi audio precedente appena l'utente parla
     stopAllJarvisAudio();
@@ -1599,25 +1618,22 @@ function initSpeech() {
       setJarvisText(`"${currentBest}"`);
     }
 
-    // Se c'è un blocco finale, attendiamo una piccola pausa di 450ms prima di eseguire
-    // per non troncare frasi articolate (es. date o compensi detti subito dopo)
+    // Se c'è un blocco finale, attendiamo 800ms di silenzio per permettere il completamento naturale
     if (finalText.trim()) {
       if (_speechDebounceTimer) clearTimeout(_speechDebounceTimer);
       _speechDebounceTimer = setTimeout(() => {
-        if (!_speechExecutionLock && _speechAccumulatedTranscript) {
-          _speechExecutionLock = true;
-          try { recognition.stop(); } catch(e){}
-          const cmd = _speechAccumulatedTranscript;
-          _speechAccumulatedTranscript = '';
-          processVoiceCommand(cmd);
-        }
-      }, 450);
+        triggerVoiceCommandExecution();
+      }, 800);
     }
   };
 
   recognition.onerror = (event) => {
     console.error('Errore vocale:', event.error);
-    if (_speechDebounceTimer) clearTimeout(_speechDebounceTimer);
+    if (_speechDebounceTimer) {
+      clearTimeout(_speechDebounceTimer);
+      _speechDebounceTimer = null;
+    }
+    _speechAccumulatedTranscript = '';
     resetArcReactor();
     if (event.error === 'not-allowed') {
       setJarvisText('Microfono non autorizzato. Controlla i permessi.');
@@ -1630,13 +1646,8 @@ function initSpeech() {
     STATE.isListening = false;
     resetArcReactor();
 
-    // Se il riconoscimento vocale termina e non è ancora scattato il debounce, esegue ora
-    if (!_speechExecutionLock && _speechAccumulatedTranscript && _speechAccumulatedTranscript.trim()) {
-      _speechExecutionLock = true;
-      const cmd = _speechAccumulatedTranscript.trim();
-      _speechAccumulatedTranscript = '';
-      processVoiceCommand(cmd);
-    }
+    // Se il riconoscimento vocale si chiude ed è presente un comando non ancora inviato, esegue una sola volta
+    triggerVoiceCommandExecution();
   };
 }
 
@@ -1649,12 +1660,16 @@ function toggleListening() {
   }
 
   if (STATE.isListening) {
+    // Tocco manuale per terminare ed eseguire subito
+    triggerVoiceCommandExecution();
     try { recognition.stop(); } catch(e){}
     return;
   }
 
   // Interrompe qualsiasi audio prima di iniziare ad ascoltare
   stopAllJarvisAudio();
+  _speechAccumulatedTranscript = '';
+  _speechExecutionLock = false;
 
   try {
     recognition.start();
@@ -2039,17 +2054,18 @@ function executeLocalJarvisCommand(cmd) {
 
     // Estrazione titolo
     let cleanTitle = lower
-      .replace(/^(?:forza\s+inserimento|forza|inserimento|inserisci|aggiungi|crea|segna|registra|fissa|imposta|programma|metti in calendario|metti in agenda|metti)\s+(?:l'evento|il turno|l'appuntamento|evento|turno|appuntamento|la partita|partita)?/i, '')
+      .replace(/^(?:forza\s+inserimento|forza|inserimento|inseriscimi|inserisci|aggiungimi|aggiungi|creami|crea|segnami|segna|registrami|registra|fissami|fissa|impostami|imposta|programma|metti in calendario|metti in agenda|mettimi|metti)\s+(?:l'evento|il turno|l'appuntamento|evento|turno|appuntamento|la partita|partita)?/i, '')
       .replace(/(?:il\s+)?\d{1,2}\s+[a-z]+/gi, '')
       .replace(/domani|dopodomani|oggi|stasera/gi, '')
       .replace(/alle\s+\d{1,2}(?::\d{2}|\s+e\s+\d{2}|\s+e\s+mezza|\s+e\s+trenta)?/gi, '')
       .replace(/(?:con\s+)?(?:paga|compenso|guadagno|tariffa)(?:\s+(?:di|a|pari\s+a))?\s*\d+(?:[.,]\d+)?\s*(?:euro|€)?/gi, '')
       .replace(/\b\d+(?:[.,]\d+)?\s*(?:euro|€)\b/gi, '')
       .replace(/anche se ho messo riposo/gi, '')
-      .replace(/^(?:di|per|a|del|della|il|la|lo|un|una|l')\s+/i, '')
+      .replace(/^(?:di|per|a|del|della|il|la|lo|un|una|uno|l')\s+/i, '')
+      .replace(/^(?:evento|appuntamento|impegno|turno)\s+/i, '')
       .trim();
 
-    if (!cleanTitle || ['qualcosa', 'un qualcosa', 'generico', 'evento generico', 'personale', 'evento personale'].includes(cleanTitle.toLowerCase())) {
+    if (!cleanTitle || ['qualcosa', 'un qualcosa', 'generico', 'evento generico', 'personale', 'evento personale', 'un evento', 'evento'].includes(cleanTitle.toLowerCase())) {
       cleanTitle = 'Impegno Personale';
     }
     cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
@@ -2201,11 +2217,21 @@ function executeLocalJarvisCommand(cmd) {
 
 // ─── Voice Commands ──────────────────────────────────────────────
 let _currentCommandId = 0;
+let _lastExecutedVoiceCmd = { text: '', time: 0 };
 
 async function processVoiceCommand(cmd) {
   if (!cmd || !cmd.trim()) return;
-  const currentCmdId = ++_currentCommandId;
   const rawCmd = cmd.trim();
+
+  // Deduplicazione di sicurezza: blocca chiamate identiche entro 3 secondi
+  const now = Date.now();
+  if (_lastExecutedVoiceCmd.text === rawCmd.toLowerCase() && (now - _lastExecutedVoiceCmd.time) < 3000) {
+    console.warn('[J.A.R.V.I.S.] Rilevato comando vocale duplicato ravvicinato, ignorato:', rawCmd);
+    return;
+  }
+  _lastExecutedVoiceCmd = { text: rawCmd.toLowerCase(), time: now };
+
+  const currentCmdId = ++_currentCommandId;
 
   // Interrompe istantaneamente qualsiasi audio precedente
   stopAllJarvisAudio();
