@@ -1517,22 +1517,33 @@ function cleanJarvisSpeechText(text) {
 // ─── Speech Recognition (J.A.R.V.I.S.) ─────────────────────────
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
+let _speechAccumulatedTranscript = '';
+let _speechDebounceTimer = null;
+let _speechExecutionLock = false;
 
 function initSpeech() {
   if (!SpeechRecognition) {
     console.warn('SpeechRecognition non supportato');
-    document.getElementById('arc-status-text').textContent = 'VOCE NON DISPONIBILE';
+    const arcText = document.getElementById('arc-status-text');
+    if (arcText) arcText.textContent = 'VOCE NON DISPONIBILE';
     return;
   }
 
   recognition = new SpeechRecognition();
   recognition.lang = 'it-IT';
   recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
     STATE.isListening = true;
+    _speechAccumulatedTranscript = '';
+    _speechExecutionLock = false;
+    if (_speechDebounceTimer) clearTimeout(_speechDebounceTimer);
+
+    // Blocca immediatamente qualsiasi audio precedente appena l'utente parla
+    stopAllJarvisAudio();
+
     const headerJarvis = document.getElementById('hud-header-jarvis');
     if (headerJarvis) {
       headerJarvis.classList.add('listening');
@@ -1544,24 +1555,58 @@ function initSpeech() {
     const capsule = document.getElementById('hud-floating-capsule');
     if (capsule) {
       capsule.classList.add('listening');
+      capsule.classList.remove('speaking');
       const cmdText = document.getElementById('capsule-command-text');
       if (cmdText) cmdText.textContent = 'IN ASCOLTO...';
     }
     const btn = document.getElementById('arc-reactor-btn');
-    if (btn) btn.classList.add('listening');
+    if (btn) {
+      btn.classList.add('listening');
+      btn.classList.remove('speaking');
+    }
     const arcText = document.getElementById('arc-status-text');
     if (arcText) arcText.textContent = 'IN ASCOLTO...';
     setJarvisText('Ti ascolto...');
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript.toLowerCase().trim();
-    console.log('Riconosciuto:', transcript);
-    processVoiceCommand(transcript);
+    let interimText = '';
+    let finalText = '';
+
+    for (let i = 0; i < event.results.length; ++i) {
+      const res = event.results[i];
+      if (res.isFinal) {
+        finalText += res[0].transcript + ' ';
+      } else {
+        interimText += res[0].transcript + ' ';
+      }
+    }
+
+    const currentBest = (finalText.trim() || interimText.trim());
+    if (currentBest) {
+      _speechAccumulatedTranscript = (finalText.trim() || currentBest);
+      setJarvisText(`"${currentBest}"`);
+    }
+
+    // Se c'è un blocco finale, attendiamo una piccola pausa di 450ms prima di eseguire
+    // per non troncare frasi articolate (es. date o compensi detti subito dopo)
+    if (finalText.trim()) {
+      if (_speechDebounceTimer) clearTimeout(_speechDebounceTimer);
+      _speechDebounceTimer = setTimeout(() => {
+        if (!_speechExecutionLock && _speechAccumulatedTranscript) {
+          _speechExecutionLock = true;
+          try { recognition.stop(); } catch(e){}
+          const cmd = _speechAccumulatedTranscript;
+          _speechAccumulatedTranscript = '';
+          processVoiceCommand(cmd);
+        }
+      }, 450);
+    }
   };
 
   recognition.onerror = (event) => {
     console.error('Errore vocale:', event.error);
+    if (_speechDebounceTimer) clearTimeout(_speechDebounceTimer);
     resetArcReactor();
     if (event.error === 'not-allowed') {
       setJarvisText('Microfono non autorizzato. Controlla i permessi.');
@@ -1573,10 +1618,19 @@ function initSpeech() {
   recognition.onend = () => {
     STATE.isListening = false;
     resetArcReactor();
+
+    // Se il riconoscimento vocale termina e non è ancora scattato il debounce, esegue ora
+    if (!_speechExecutionLock && _speechAccumulatedTranscript && _speechAccumulatedTranscript.trim()) {
+      _speechExecutionLock = true;
+      const cmd = _speechAccumulatedTranscript.trim();
+      _speechAccumulatedTranscript = '';
+      processVoiceCommand(cmd);
+    }
   };
 }
 
 function toggleListening() {
+  unlockMobileAudio();
   if (!recognition) {
     showToast('Riconoscimento vocale non disponibile su questo browser', 'info');
     jarvisSpeak('Riconoscimento vocale non disponibile in questo browser.');
@@ -1588,11 +1642,8 @@ function toggleListening() {
     return;
   }
 
-  if (STATE.isSpeaking) {
-    speechSynthesis.cancel();
-    STATE.isSpeaking = false;
-    resetArcReactor();
-  }
+  // Interrompe qualsiasi audio prima di iniziare ad ascoltare
+  stopAllJarvisAudio();
 
   try {
     recognition.start();
@@ -1648,8 +1699,111 @@ function setJarvisText(text) {
 }
 
 let _jarvisAudioPlayer = null;
+let _speechSessionToken = 0;
 
-function fallbackBrowserSpeak(text) {
+function getOrCreateJarvisAudio() {
+  if (!_jarvisAudioPlayer) {
+    _jarvisAudioPlayer = new Audio();
+  }
+  return _jarvisAudioPlayer;
+}
+
+/**
+ * unlockMobileAudio — Pre-sblocca l'audio HTML5 sui browser mobile (Android Chrome / iOS Safari)
+ * agganciandosi all'interazione utente diretta (click/tap), evitando che le risposte asincrone
+ * del backend vengano bloccate dalle policy di autoplay dello smartphone.
+ */
+function unlockMobileAudio() {
+  try {
+    const p = getOrCreateJarvisAudio();
+    if (p.paused && (!p.src || p.src === window.location.href)) {
+      p.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+      const prom = p.play();
+      if (prom !== undefined) {
+        prom.then(() => {
+          p.pause();
+          p.currentTime = 0;
+        }).catch(() => {});
+      }
+    }
+  } catch(e) {}
+}
+
+/**
+ * stopAllJarvisAudio — Interrompe categoricamente qualsiasi audio in riproduzione:
+ * sia il player HTML5 di Edge-TTS sia la sintesi vocale SpeechSynthesis del browser.
+ * Impedisce al 100% che due voci diverse possano mai sovrapporsi.
+ */
+function stopAllJarvisAudio() {
+  _speechSessionToken++;
+  if (_jarvisAudioPlayer) {
+    try {
+      _jarvisAudioPlayer.pause();
+      _jarvisAudioPlayer.currentTime = 0;
+      _jarvisAudioPlayer.removeAttribute('src');
+      _jarvisAudioPlayer.load();
+    } catch(e) {}
+  }
+  if ('speechSynthesis' in window) {
+    try {
+      speechSynthesis.cancel();
+    } catch(e) {}
+  }
+  STATE.isSpeaking = false;
+  setJarvisTalkingState(false);
+  resetArcReactor();
+}
+
+function setJarvisTalkingState(isTalking) {
+  const headerJarvis = document.getElementById('hud-header-jarvis');
+  const headerStatus = document.getElementById('header-jarvis-status');
+  const capsule = document.getElementById('hud-floating-capsule');
+  const cmdText = document.getElementById('capsule-command-text');
+  const btn = document.getElementById('arc-reactor-btn');
+  const arcText = document.getElementById('arc-status-text');
+
+  if (isTalking) {
+    if (headerJarvis) {
+      headerJarvis.classList.add('speaking');
+      headerJarvis.classList.remove('listening');
+    }
+    if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
+    if (capsule) {
+      capsule.classList.add('speaking');
+      capsule.classList.remove('listening');
+    }
+    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
+    if (btn) {
+      btn.classList.add('speaking');
+      btn.classList.remove('listening');
+    }
+    if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
+  } else {
+    if (headerJarvis) headerJarvis.classList.remove('speaking');
+    if (capsule) capsule.classList.remove('speaking');
+    if (btn) btn.classList.remove('speaking');
+  }
+}
+
+function fallbackBrowserSpeak(text, sessionToken) {
+  if (sessionToken && sessionToken !== _speechSessionToken) return;
+
+  // Garantisce che nessun player audio sia attivo
+  if (_jarvisAudioPlayer) {
+    try {
+      _jarvisAudioPlayer.pause();
+      _jarvisAudioPlayer.currentTime = 0;
+    } catch(e) {}
+  }
+  if ('speechSynthesis' in window) {
+    try {
+      speechSynthesis.cancel();
+    } catch(e) {}
+  }
+
+  STATE.isSpeaking = true;
+  setJarvisTalkingState(true);
+
   const cleanText = cleanJarvisSpeechText(text);
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = 'it-IT';
@@ -1662,17 +1816,28 @@ function fallbackBrowserSpeak(text) {
   }
 
   utterance.onend = () => {
-    STATE.isSpeaking = false;
-    resetArcReactor();
+    if (!sessionToken || sessionToken === _speechSessionToken) {
+      STATE.isSpeaking = false;
+      setJarvisTalkingState(false);
+      resetArcReactor();
+    }
   };
 
   utterance.onerror = () => {
-    STATE.isSpeaking = false;
-    resetArcReactor();
+    if (!sessionToken || sessionToken === _speechSessionToken) {
+      STATE.isSpeaking = false;
+      setJarvisTalkingState(false);
+      resetArcReactor();
+    }
   };
 
-  speechSynthesis.cancel();
-  speechSynthesis.speak(utterance);
+  try {
+    speechSynthesis.speak(utterance);
+  } catch(e) {
+    STATE.isSpeaking = false;
+    setJarvisTalkingState(false);
+    resetArcReactor();
+  }
 }
 
 /**
@@ -1680,54 +1845,44 @@ function fallbackBrowserSpeak(text) {
  * Elimina completamente il secondo roundtrip HTTP, avviando la voce all'istante.
  */
 function playJarvisAudioData(audioDataUrl, text) {
+  const currentToken = ++_speechSessionToken;
+  stopAllJarvisAudio();
   STATE.isSpeaking = true;
-  const headerJarvis = document.getElementById('hud-header-jarvis');
-  if (headerJarvis) {
-    headerJarvis.classList.add('speaking');
-    headerJarvis.classList.remove('listening');
-  }
-  const headerStatus = document.getElementById('header-jarvis-status');
-  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
-
-  const capsule = document.getElementById('hud-floating-capsule');
-  if (capsule) {
-    capsule.classList.add('speaking');
-    const cmdText = document.getElementById('capsule-command-text');
-    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
-  }
-  const btn = document.getElementById('arc-reactor-btn');
-  if (btn) btn.classList.add('speaking');
-  const arcText = document.getElementById('arc-status-text');
-  if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
+  setJarvisTalkingState(true);
   setJarvisText(text);
 
-  try {
-    if (_jarvisAudioPlayer) {
-      _jarvisAudioPlayer.pause();
-      _jarvisAudioPlayer.currentTime = 0;
-    }
-    _jarvisAudioPlayer = new Audio(audioDataUrl);
-
-    _jarvisAudioPlayer.onended = () => {
+  const player = getOrCreateJarvisAudio();
+  player.onended = () => {
+    if (_speechSessionToken === currentToken) {
       STATE.isSpeaking = false;
+      setJarvisTalkingState(false);
       resetArcReactor();
-    };
+    }
+  };
 
-    _jarvisAudioPlayer.onerror = (e) => {
+  player.onerror = (e) => {
+    if (_speechSessionToken === currentToken) {
       console.warn('Errore riproduzione data audio, uso fallback browser:', e);
-      fallbackBrowserSpeak(text);
-    };
+      fallbackBrowserSpeak(text, currentToken);
+    }
+  };
 
-    const playPromise = _jarvisAudioPlayer.play();
+  try {
+    player.src = audioDataUrl;
+    const playPromise = player.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn('Autoplay bloccato con data audio, uso fallback browser:', err);
-        fallbackBrowserSpeak(text);
+        if (_speechSessionToken === currentToken) {
+          console.warn('Autoplay bloccato con data audio, uso fallback browser:', err);
+          fallbackBrowserSpeak(text, currentToken);
+        }
       });
     }
   } catch (err) {
-    console.warn('Errore avvio data audio, uso fallback browser:', err);
-    fallbackBrowserSpeak(text);
+    if (_speechSessionToken === currentToken) {
+      console.warn('Errore avvio data audio, uso fallback browser:', err);
+      fallbackBrowserSpeak(text, currentToken);
+    }
   }
 }
 
@@ -1738,56 +1893,45 @@ function playJarvisAudioData(audioDataUrl, text) {
  * @param {string} text - Testo da pronunciare
  */
 function jarvisSpeak(text) {
+  const currentToken = ++_speechSessionToken;
+  stopAllJarvisAudio();
   STATE.isSpeaking = true;
-  const headerJarvis = document.getElementById('hud-header-jarvis');
-  if (headerJarvis) {
-    headerJarvis.classList.add('speaking');
-    headerJarvis.classList.remove('listening');
-  }
-  const headerStatus = document.getElementById('header-jarvis-status');
-  if (headerStatus) headerStatus.textContent = 'J.A.R.V.I.S. PARLA...';
-
-  const capsule = document.getElementById('hud-floating-capsule');
-  if (capsule) {
-    capsule.classList.add('speaking');
-    const cmdText = document.getElementById('capsule-command-text');
-    if (cmdText) cmdText.textContent = 'J.A.R.V.I.S. PARLA...';
-  }
-  const btn = document.getElementById('arc-reactor-btn');
-  if (btn) btn.classList.add('speaking');
-  const arcText = document.getElementById('arc-status-text');
-  if (arcText) arcText.textContent = 'J.A.R.V.I.S. PARLA...';
+  setJarvisTalkingState(true);
   setJarvisText(text);
 
-  // Prova riproduzione audio neurale con filtro DSP J.A.R.V.I.S. dal server locale
-  try {
-    if (_jarvisAudioPlayer) {
-      _jarvisAudioPlayer.pause();
-      _jarvisAudioPlayer.currentTime = 0;
-    }
-    const audioUrl = `/api/jarvis/speak?text=${encodeURIComponent(text)}`;
-    _jarvisAudioPlayer = new Audio(audioUrl);
-
-    _jarvisAudioPlayer.onended = () => {
+  const player = getOrCreateJarvisAudio();
+  player.onended = () => {
+    if (_speechSessionToken === currentToken) {
       STATE.isSpeaking = false;
+      setJarvisTalkingState(false);
       resetArcReactor();
-    };
+    }
+  };
 
-    _jarvisAudioPlayer.onerror = (e) => {
+  player.onerror = (e) => {
+    if (_speechSessionToken === currentToken) {
       console.warn('Backend audio non disponibile, uso fallback browser:', e);
-      fallbackBrowserSpeak(text);
-    };
+      fallbackBrowserSpeak(text, currentToken);
+    }
+  };
 
-    const playPromise = _jarvisAudioPlayer.play();
+  try {
+    const audioUrl = `/api/jarvis/speak?text=${encodeURIComponent(text)}`;
+    player.src = audioUrl;
+    const playPromise = player.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn('Autoplay bloccato, uso fallback browser:', err);
-        fallbackBrowserSpeak(text);
+        if (_speechSessionToken === currentToken) {
+          console.warn('Autoplay bloccato, uso fallback browser:', err);
+          fallbackBrowserSpeak(text, currentToken);
+        }
       });
     }
   } catch (err) {
-    console.warn('Errore avvio audio J.A.R.V.I.S., uso fallback browser:', err);
-    fallbackBrowserSpeak(text);
+    if (_speechSessionToken === currentToken) {
+      console.warn('Errore avvio audio J.A.R.V.I.S., uso fallback browser:', err);
+      fallbackBrowserSpeak(text, currentToken);
+    }
   }
 }
 
@@ -1826,20 +1970,31 @@ function isFootballMatch(event) {
 
 // ─── Local J.A.R.V.I.S. NLP Engine (Per Smartphone Offline & Privacy) ───
 function executeLocalJarvisCommand(cmd) {
-  const lower = (cmd || '').toLowerCase().trim();
+  let lower = (cmd || '').toLowerCase().trim();
+  lower = lower.replace(/^(?:ehi\s+|ciao\s+|ok\s+)?jarvis[,:\s]*/i, '').trim();
+  if (!lower) return false;
 
   // 1. Inserimento evento / turno / appuntamento
-  if (lower.startsWith('inserisci') || lower.startsWith('aggiungi') || lower.startsWith('crea') || lower.startsWith('segna')) {
+  const isAdd = lower.startsWith('inserisci') || lower.startsWith('aggiungi') ||
+                lower.startsWith('crea') || lower.startsWith('segna') ||
+                lower.startsWith('registra') || lower.startsWith('fissa') ||
+                lower.startsWith('forza') || lower.startsWith('imposta') ||
+                lower.startsWith('programma') ||
+                (lower.startsWith('metti ') && !lower.startsWith('metti riposo') && !lower.startsWith('metti lavoro'));
+
+  if (isAdd) {
     // Estrazione paga / compenso
     let earnings = 0.0;
-    const payMatch = lower.match(/(?:paga|compenso|guadagno|con)\s+(\d+(?:[.,]\d+)?)\s*(?:euro|€)?/i);
+    const payMatch = lower.match(/(?:paga|compenso|guadagno|tariffa|con)\s+(?:di\s+)?(\d+(?:[.,]\d+)?)\s*(?:euro|€)?/i) ||
+                     lower.match(/(\d+(?:[.,]\d+)?)\s*(?:euro|€)/i);
     if (payMatch) {
       earnings = parseFloat(payMatch[1].replace(',', '.'));
     }
 
     // Estrazione ora
     let hour = 10, minute = 0;
-    const timeMatch = lower.match(/alle\s+(\d{1,2})(?::(\d{2})|\s+e\s+(\d{2})|\s+e\s+mezza|\s+e\s+trenta)?/i);
+    const timeMatch = lower.match(/alle\s+(\d{1,2})(?::(\d{2})|\s+e\s+(\d{2})|\s+e\s+mezza|\s+e\s+trenta)?/i) ||
+                      lower.match(/ore\s+(\d{1,2})(?::(\d{2})|\s+e\s+(\d{2}))?/i);
     if (timeMatch) {
       hour = parseInt(timeMatch[1], 10);
       if (timeMatch[2]) minute = parseInt(timeMatch[2], 10);
@@ -1871,23 +2026,43 @@ function executeLocalJarvisCommand(cmd) {
 
     // Estrazione titolo
     let cleanTitle = lower
-      .replace(/^(?:jarvis\s+)?(?:inserisci|aggiungi|crea|segna)\s+(?:l'evento|il turno|l'appuntamento|evento|turno|appuntamento)?/i, '')
+      .replace(/^(?:forza\s+inserimento|forza|inserimento|inserisci|aggiungi|crea|segna|registra|fissa|imposta|programma|metti in calendario|metti in agenda|metti)\s+(?:l'evento|il turno|l'appuntamento|evento|turno|appuntamento|la partita|partita)?/i, '')
       .replace(/(?:il\s+)?\d{1,2}\s+[a-z]+/gi, '')
       .replace(/domani|dopodomani/gi, '')
       .replace(/alle\s+\d{1,2}(?::\d{2}|\s+e\s+\d{2}|\s+e\s+mezza|\s+e\s+trenta)?/gi, '')
-      .replace(/(?:paga|compenso|guadagno|con)\s+\d+(?:[.,]\d+)?\s*(?:euro|€)?/gi, '')
-      .replace(/^(?:di|per|a|del)\s+/i, '')
+      .replace(/(?:con\s+)?(?:paga|compenso|guadagno|tariffa)(?:\s+(?:di|a|pari\s+a))?\s*\d+(?:[.,]\d+)?\s*(?:euro|€)?/gi, '')
+      .replace(/\b\d+(?:[.,]\d+)?\s*(?:euro|€)\b/gi, '')
+      .replace(/anche se ho messo riposo/gi, '')
+      .replace(/^(?:di|per|a|del|della|il|la|lo|un|una|l')\s+/i, '')
       .trim();
 
-    if (!cleanTitle) cleanTitle = 'Impegno Personale';
+    if (!cleanTitle || ['qualcosa', 'un qualcosa', 'generico', 'evento generico', 'personale', 'evento personale'].includes(cleanTitle.toLowerCase())) {
+      cleanTitle = 'Impegno Personale';
+    }
     cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+
+    // Categoria & Sede
+    let cat = 'CUSTOM';
+    let venue = 'Personale';
+    const lowTitle = cleanTitle.toLowerCase();
+    if (lowTitle.includes('fiera') || lowTitle.includes('mostra') || lowTitle.includes('baratto') || lowTitle.includes('expo')) {
+      cat = 'FIERA';
+      venue = "Mostra d'Oltremare";
+    } else if (lowTitle.includes('calcio') || lowTitle.includes('calcetto') || lowTitle.includes('partita') || lowTitle.includes('stadio') || lowTitle.includes('napoli')) {
+      cat = 'CALCIO';
+      venue = lowTitle.includes('calcetto') ? 'Campo Calcetto' : 'Stadio Diego Armando Maradona';
+    } else if (lowTitle.includes('dentista')) {
+      venue = 'Studio Dentistico';
+    } else if (lowTitle.includes('visita') || lowTitle.includes('medico') || lowTitle.includes('dottore')) {
+      venue = 'Studio Medico';
+    }
 
     const startStr = toSqlDateTime(eventDate);
     const newEv = {
       id: Date.now(),
       title: cleanTitle,
-      venue: 'Personale',
-      category: 'CUSTOM',
+      venue: venue,
+      category: cat,
       event_start: startStr,
       call_time: startStr,
       notes: earnings > 0 ? `Compenso: €${earnings.toFixed(2)}` : 'Aggiunto via J.A.R.V.I.S.',
@@ -1998,8 +2173,17 @@ function executeLocalJarvisCommand(cmd) {
 }
 
 // ─── Voice Commands ──────────────────────────────────────────────
+let _currentCommandId = 0;
+
 async function processVoiceCommand(cmd) {
-  setJarvisText(`"${cmd}"`);
+  if (!cmd || !cmd.trim()) return;
+  const currentCmdId = ++_currentCommandId;
+  const rawCmd = cmd.trim();
+
+  // Interrompe istantaneamente qualsiasi audio precedente
+  stopAllJarvisAudio();
+
+  setJarvisText(`"${rawCmd}"`);
 
   // Feedback visivo immediato di elaborazione
   const headerStatus = document.getElementById('header-jarvis-status');
@@ -2009,13 +2193,28 @@ async function processVoiceCommand(cmd) {
   const arcText = document.getElementById('arc-status-text');
   if (arcText) arcText.textContent = 'J.A.R.V.I.S. ELABORA...';
 
+  // Se l'utente ha detto solo "Jarvis", "Ehi Jarvis", "Ciao Jarvis"
+  const cleanWakeOnly = rawCmd.toLowerCase().replace(/^(?:ehi\s+|ciao\s+|ok\s+)?jarvis[,:\s]*/i, '').trim();
+  if (!cleanWakeOnly && /^(?:ehi\s+|ciao\s+|ok\s+)?jarvis[!?.]*$/i.test(rawCmd)) {
+    jarvisSpeak("Al suo servizio, signore. Mi dica pure, sono a sua completa disposizione.");
+    _speechExecutionLock = false;
+    return;
+  }
+
   // 1. Tenta elaborazione intelligente via backend J.A.R.V.I.S. (con risposte britanniche e filtro DSP)
   try {
     const playLocal = localStorage.getItem('jarvis_play_local') === 'true';
-    const res = await apiPost('/api/jarvis/command', { command: cmd, play_local: playLocal });
+    const res = await apiPost('/api/jarvis/command', { command: rawCmd, play_local: playLocal });
+
+    // Se nel frattempo è partito un comando più recente, scarta la risposta obsoleta
+    if (_currentCommandId !== currentCmdId) {
+      console.log('Comando vocale obsoleto scartato:', rawCmd);
+      return;
+    }
+
     if (res && res.response) {
       if (res.audio_data) {
-        // Riproduzione ISTANTANEA da audio base64: zero attesa del secondo roundtrip!
+        // Riproduzione ISTANTANEA da audio base64
         playJarvisAudioData(res.audio_data, res.response);
       } else {
         jarvisSpeak(res.response);
@@ -2066,18 +2265,28 @@ async function processVoiceCommand(cmd) {
         }
       }
 
+      _speechExecutionLock = false;
       return;
     }
   } catch (err) {
     console.warn('Backend J.A.R.V.I.S. non raggiungibile, utilizzo logica locale dello smartphone:', err);
   }
-  setJarvisText(`"${cmd}"`);
+
+  // Se nel frattempo è partito un altro comando, esci
+  if (_currentCommandId !== currentCmdId) return;
+
+  setJarvisText(`"${rawCmd}"`);
 
   // Esegue comandi avanzati direttamente sul database locale dello smartphone (creazione, cancellazione, stato, orari)
-  if (executeLocalJarvisCommand(cmd)) return;
+  if (executeLocalJarvisCommand(rawCmd)) {
+    _speechExecutionLock = false;
+    return;
+  }
+
+  const cmdClean = rawCmd.toLowerCase().replace(/^(?:ehi\s+|ciao\s+|ok\s+)?jarvis[,:\s]*/i, '').trim();
 
   // ── Prossimo turno generico ──
-  if (cmd.includes('prossimo turno') || cmd.includes('quando lavoro') || cmd.includes('prossimo servizio')) {
+  if (cmdClean.includes('prossimo turno') || cmdClean.includes('quando lavoro') || cmdClean.includes('prossimo servizio')) {
     const future = STATE.events
       .filter(e => isFuture(e.event_start))
       .sort((a, b) => new Date(a.event_start.replace(' ','T')) - new Date(b.event_start.replace(' ','T')));
@@ -2088,18 +2297,19 @@ async function processVoiceCommand(cmd) {
       const n = future[0];
       jarvisSpeak(`Il prossimo turno è ${n.title} il ${formatDate(n.event_start)} alle ${formatTime(n.event_start)}. Convocazione alle ${formatTime(n.call_time)}.`);
     }
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Salva su Google Calendar ──
   if (
-    cmd.includes('google calendar') ||
-    cmd.includes('salva su google') ||
-    cmd.includes('aggiungi a google') ||
-    cmd.includes('metti su google') ||
-    cmd.includes('aggiungi su google') ||
-    cmd.includes('calendario google') ||
-    cmd.includes('collega google')
+    cmdClean.includes('google calendar') ||
+    cmdClean.includes('salva su google') ||
+    cmdClean.includes('aggiungi a google') ||
+    cmdClean.includes('metti su google') ||
+    cmdClean.includes('aggiungi su google') ||
+    cmdClean.includes('calendario google') ||
+    cmdClean.includes('collega google')
   ) {
     const future = STATE.events
       .filter(e => isFuture(e.event_start))
@@ -2107,6 +2317,7 @@ async function processVoiceCommand(cmd) {
 
     if (!future.length) {
       jarvisSpeak('Non ho trovato turni futuri programmati da salvare su Google Calendar.');
+      _speechExecutionLock = false;
       return;
     }
 
@@ -2115,49 +2326,50 @@ async function processVoiceCommand(cmd) {
     window.open(gcalUrl, '_blank');
     jarvisSpeak(`Apro Google Calendar per il turno del ${next.title}. Convocazione impostata alle ore ${formatTime(next.call_time)}.`);
     showToast(`Apertura Google Calendar per ${next.title}`, 'success');
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Napoli: distingue partita vs evento generico ──
-  if (cmd.includes('napoli')) {
-    // Controlla se l'utente sta chiedendo specificamente di calcio/partita
+  if (cmdClean.includes('napoli')) {
     const isFootballQuery =
-      cmd.includes('partita') || cmd.includes('partite') || cmd.includes('gioca') ||
-      cmd.includes('calcio') || cmd.includes('stadio') || cmd.includes('maradona') ||
-      cmd.includes('champions') || cmd.includes('serie a') || cmd.includes('coppa');
+      cmdClean.includes('partita') || cmdClean.includes('partite') || cmdClean.includes('gioca') ||
+      cmdClean.includes('calcio') || cmdClean.includes('stadio') || cmdClean.includes('maradona') ||
+      cmdClean.includes('champions') || cmdClean.includes('serie a') || cmdClean.includes('coppa');
 
     if (isFootballQuery) {
-      // Cerca solo partite di calcio, esclude fiere/eventi generici
       queryFootballMatch('napoli', 'il Napoli');
     } else {
-      // Query generica: qualsiasi evento con "napoli" nel titolo o venue
       queryTeam('napoli', 'il Napoli');
     }
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Juve Stabia / Stabia ──
-  if (cmd.includes('stabia') || cmd.includes('juve stabia')) {
-    if (cmd.includes('partita') || cmd.includes('gioca') || cmd.includes('calcio')) {
+  if (cmdClean.includes('stabia') || cmdClean.includes('juve stabia')) {
+    if (cmdClean.includes('partita') || cmdClean.includes('gioca') || cmdClean.includes('calcio')) {
       queryFootballMatch('stabia', 'la Juve Stabia');
     } else {
       queryTeam('stabia', 'la Juve Stabia');
     }
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Casertana ──
-  if (cmd.includes('casertana')) {
-    if (cmd.includes('partita') || cmd.includes('gioca') || cmd.includes('calcio')) {
+  if (cmdClean.includes('casertana')) {
+    if (cmdClean.includes('partita') || cmdClean.includes('gioca') || cmdClean.includes('calcio')) {
       queryFootballMatch('casertana', 'la Casertana');
     } else {
       queryTeam('casertana', 'la Casertana');
     }
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Mostra d'Oltremare / Fiera ──
-  if (cmd.includes('mostra') || cmd.includes('fiera') || cmd.includes('oltremare')) {
+  if (cmdClean.includes('mostra') || cmdClean.includes('fiera') || cmdClean.includes('oltremare')) {
     const events = STATE.events.filter(e =>
       isFuture(e.event_start) &&
       (e.category?.toUpperCase() === 'FIERA' || (e.venue || '').toLowerCase().includes('mostra'))
@@ -2169,19 +2381,21 @@ async function processVoiceCommand(cmd) {
       const next = events[0];
       jarvisSpeak(`Il prossimo evento alla Mostra d\'Oltremare è ${next.title} il ${formatDate(next.event_start)}. Convocazione alle ${formatTime(next.call_time)}.`);
     }
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Aggiorna calendari ──
-  if (cmd.includes('aggiorna') || cmd.includes('sincronizza') || cmd.includes('sync')) {
+  if (cmdClean.includes('aggiorna') || cmdClean.includes('sincronizza') || cmdClean.includes('sync')) {
     jarvisSpeak('Avvio sincronizzazione di tutti i calendari.');
     switchTab('sync');
     setTimeout(() => triggerSync(), 1000);
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Conflitti ──
-  if (cmd.includes('sovrapposiz') || cmd.includes('conflitt') || cmd.includes('coincidenz')) {
+  if (cmdClean.includes('sovrapposiz') || cmdClean.includes('conflitt') || cmdClean.includes('coincidenz')) {
     const conflicts = STATE.events.filter(e => e.conflict);
     if (!conflicts.length) {
       jarvisSpeak('Nessuna sovrapposizione rilevata. Tutti i turni sono liberi.');
@@ -2189,24 +2403,25 @@ async function processVoiceCommand(cmd) {
       jarvisSpeak(`Ho rilevato ${conflicts.length} eventi con conflitti di data. Controlla la scheda Avvisi per i dettagli.`);
       switchTab('alerts');
     }
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Quanti eventi ──
-  if (cmd.includes('quanti eventi') || cmd.includes('quanti turni')) {
+  if (cmdClean.includes('quanti eventi') || cmdClean.includes('quanti turni')) {
     const future = STATE.events.filter(e => isFuture(e.event_start));
     jarvisSpeak(`Hai ${future.length} turni futuri in programma su un totale di ${STATE.events.length} eventi nel database.`);
+    _speechExecutionLock = false;
     return;
   }
 
   // ── Elimina Evento / Appuntamento ──
-  if (cmd.includes('elimina') || cmd.includes('cancella') || cmd.includes('rimuovi')) {
-    const searchTarget = cmd
+  if (cmdClean.includes('elimina') || cmdClean.includes('cancella') || cmdClean.includes('rimuovi')) {
+    const searchTarget = cmdClean
       .replace(/elimina|cancella|rimuovi|evento|appuntamento|l'evento|il turno|turno/gi, '')
       .trim().toLowerCase();
 
     if (searchTarget.length >= 2) {
-      // Cerca prima tra gli eventi personali/aggiunti
       let match = STATE.events.find(e =>
         classifyEventCategory(e) === 'CUSTOM' &&
         e.title.toLowerCase().includes(searchTarget)
@@ -2218,13 +2433,15 @@ async function processVoiceCommand(cmd) {
       if (match) {
         openBottomSheet(match);
         jarvisSpeak(`Ho aperto ${match.title}. Tocca 'Elimina Evento' per confermare la cancellazione.`);
+        _speechExecutionLock = false;
         return;
       }
     }
   }
 
   // ── Default ──
-  jarvisSpeak('Non ho capito il comando. Prova a chiedere: quando è il prossimo turno, quando gioca il Napoli, o aggiorna i calendari.');
+  jarvisSpeak('Non ho compreso appieno la richiesta, signore. Posso informarla sui turni futuri, sulle partite di calcio o aggiungere impegni alla sua agenda.');
+  _speechExecutionLock = false;
 }
 
 /**
@@ -2649,6 +2866,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Test Voce J.A.R.V.I.S. Button
   document.getElementById('btn-test-jarvis-voice')?.addEventListener('click', () => {
+    unlockMobileAudio();
     processVoiceCommand('Jarvis buongiorno, esegui test vocale del sistema');
   });
 
@@ -2665,6 +2883,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tutorial Example Pills (Click to test & copy)
   document.querySelectorAll('.cmd-example-pill').forEach(pill => {
     pill.addEventListener('click', async () => {
+      unlockMobileAudio();
       const cmd = pill.dataset.cmd;
       if (!cmd) return;
       try {

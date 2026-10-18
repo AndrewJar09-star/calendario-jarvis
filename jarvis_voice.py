@@ -261,14 +261,6 @@ class JarvisResponses:
     def unknown_query() -> str:
         return "Non ho compreso appieno la sua richiesta, signore. Posso fornirle informazioni sui prossimi turni, sulle partite allo stadio Maradona o aggiornare la sua agenda."
 
-
-def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[str, Any]]]:
-    """
-    Interpreta un comando vocale o testuale in linguaggio naturale e restituisce
-    la risposta ideale in perfetto stile J.A.R.V.I.S. (con 'Signore', tono calmo,
-    sottile ironia britannica e dizione formattata per la sintesi vocale).
-    Ritorna una tupla (testo_risposta, evento_correlato_opzionale).
-    """
 # =====================================================================
 # MODULO NLP: PARSER DATE, ORARI, COMPENSI & AZIONI DIRETTE
 # =====================================================================
@@ -404,7 +396,7 @@ def extract_event_title(cmd: str, date_raw: Optional[str] = None) -> str:
     t = re.sub(r'\b(?:con\s+stato\s+(?:lavoro\s+io|lavoro|riposo|ignora))\b', '', t).strip()
     t = re.sub(r'\b(?:stato\s+(?:lavoro\s+io|lavoro|riposo|ignora))\b', '', t).strip()
 
-    t = re.sub(r'\b(?:inserisci|aggiungi|crea|registra|segna|fissa|metti in calendario|metti in agenda|metti|programma|pianifica)\b', '', t).strip()
+    t = re.sub(r'\b(?:forza\s+inserimento|forza|inserimento|inserisci|aggiungi|crea|registra|segna|fissa|imposta|metti in calendario|metti in agenda|metti|programma|pianifica)\b', '', t).strip()
     t = re.sub(r'\b(?:un|una|uno|il|lo|la|l\'|i|gli|le)\b', '', t).strip()
     t = re.sub(r'\b(?:evento|appuntamento|impegno|turno|servizio|partita)\b', '', t).strip()
     t = re.sub(r'\b(?:personale|privato)\b', '', t).strip()
@@ -417,7 +409,7 @@ def extract_event_title(cmd: str, date_raw: Optional[str] = None) -> str:
     t = re.sub(r'^(?:per\s+il|per|il|del|della|di|a|alle|in|presso)\s+', '', t).strip()
     t = re.sub(r'\s+(?:per\s+il|per|il|del|della|di|a|alle|in|presso)$', '', t).strip()
     t = re.sub(r'[^\w\s\'-]', '', t).strip()
-    if not t:
+    if not t or t.lower() in ["qualcosa", "un qualcosa", "qualcos'altro", "generico", "evento generico", "personale", "evento personale"]:
         return "Impegno Personale"
     return t.strip().capitalize()
 
@@ -494,7 +486,12 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
         return JarvisResponses.boot_greeting(), None, None
 
     cmd_lower = cmd.lower().strip()
-    cmd_clean = re.sub(r'^(?:ehi\s+)?jarvis[,:\s]*', '', cmd_lower).strip()
+    cmd_clean = re.sub(r'^(?:ehi\s+|ciao\s+|ok\s+)?jarvis[,:\s]*', '', cmd_lower).strip()
+
+    # Se l'utente ha invocato solo il nome "Jarvis" o "Ehi Jarvis" senza un comando
+    if not cmd_clean:
+        return "Al suo servizio, signore. Mi dica pure, sono a sua completa disposizione.", None, None
+
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Filtra eventi futuri ordinati cronologicamente
@@ -536,12 +533,26 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
     # ═════════════════════════════════════════════════════════════════
     # 1. INSERIMENTO EVENTO PERSONALE / TURNO CON EVENTUALE PAGA
     # ═════════════════════════════════════════════════════════════════
-    is_add_cmd = (
+    # Esclusioni da add_cmd per evitare collisioni con query o cambi di stato
+    is_gcal_cmd = "google" in cmd_clean or "calendar" in cmd_clean
+    is_count_cmd = any(k in cmd_clean for k in ["quanti turni", "quanti eventi", "conteggio turni", "conteggio eventi", "quanti impegni"])
+    is_status_cmd = any(cmd_clean.startswith(p) for p in [
+        "metti riposo", "metti lavoro", "imposta riposo", "imposta lavoro", "imposta stato",
+        "seleziona riposo", "seleziona lavoro", "conferma lavoro", "confermo lavoro", "segna riposo", "segna lavoro"
+    ]) or "stato riposo" in cmd_clean or "stato lavoro" in cmd_clean
+    is_query_cmd = any(cmd_clean.startswith(q) for q in [
+        "cosa c'è", "cosa ce", "cosa ho", "ho qualcosa", "sono libero", "è libera", "e libera",
+        "quando è", "quando e", "quando gioca", "ci sono", "prossim", "ho impegni"
+    ])
+
+    is_add_cmd = not (is_gcal_cmd or is_count_cmd or is_status_cmd or is_query_cmd) and (
         any(k in cmd_clean for k in [
-            "inserisci", "aggiungi", "crea", "registra", "segna", "fissa",
-            "metti in calendario", "metti in agenda", "programma", "pianifica"
+            "inserisci", "aggiungi", "crea", "registra", "segna", "fissa", "forza",
+            "metti in calendario", "metti in agenda", "pianifica",
+            "nuovo turno", "nuovo evento", "nuova fiera", "nuovo impegno", "nuova partita", "nuovo appuntamento"
         ])
-        or (cmd_clean.startswith("metti ") and any(w in cmd_clean for w in ["turno", "evento", "partita", "appuntamento", "chiamata", "impegno", "servizio"]))
+        or (cmd_clean.startswith("metti ") and any(w in cmd_clean for w in ["turno", "evento", "partita", "appuntamento", "chiamata", "impegno", "servizio", "fiera", "calcetto"]))
+        or bool(re.search(r'\bprogramma\s+(?:un\s+|una\s+|il\s+|la\s+|turno|evento|partita|visita|impegno)', cmd_clean))
     )
     is_delete_cmd = any(k in cmd_clean for k in ["elimina", "cancella", "rimuovi", "disdici", "annulla"])
 
@@ -646,9 +657,12 @@ def process_jarvis_command(cmd: str, events: list) -> Tuple[str, Optional[Dict[s
             clean_target = re.sub(rf'\b(?:il\s+|del\s+)?{re.escape(date_raw)}\b', '', clean_target, flags=re.IGNORECASE).strip()
         clean_target = clean_target.strip()
 
-        match = find_best_matching_event(clean_target, events, date_iso=date_iso)
-        if not match and not clean_target:
+        if "prossimo" in clean_target or not clean_target:
             match = future_events[0] if future_events else (events[0] if events else None)
+        else:
+            match = find_best_matching_event(clean_target, events, date_iso=date_iso)
+            if not match:
+                match = future_events[0] if future_events else (events[0] if events else None)
 
         if match:
             updated = update_event_status(match["id"], new_status, earnings)

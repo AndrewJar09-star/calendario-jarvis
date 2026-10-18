@@ -3,8 +3,8 @@
    Strategia: Network-first con cache fallback per offline
    ================================================================ */
 
-const CACHE_NAME = 'steward-os-v3';
-const STATIC_CACHE = 'steward-static-v3';
+const CACHE_NAME = 'steward-os-v4';
+const STATIC_CACHE = 'steward-static-v4';
 
 // Assets essenziali da precacherizzare
 const PRECACHE_ASSETS = [
@@ -27,7 +27,7 @@ const CDN_HOSTS = [
 ];
 
 // API che NON devono essere cacheizzate (sempre fresh)
-const API_PATHS = ['/api/sync', '/api/events', '/api/alerts', '/api/calendar.ics', '/api/google-script'];
+const API_PATHS = ['/api/sync', '/api/events', '/api/alerts', '/api/calendar.ics', '/api/google-script', '/api/jarvis'];
 
 // ─── Install ───────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
