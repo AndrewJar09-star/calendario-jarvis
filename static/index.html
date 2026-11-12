@@ -34,7 +34,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="/static/style.css?v=2.7.0" />
+  <link rel="stylesheet" href="/static/style.css?v=2.8.0" />
 
   <!-- FullCalendar v6 -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -313,6 +313,66 @@
       </div>
     </section>
 
+    <!-- ════ TAB: GUADAGNI & BILANCIO ════ -->
+    <section id="tab-earnings" class="tab-panel" role="tabpanel" aria-labelledby="nav-earnings">
+      <div class="earnings-top-bar">
+        <div class="section-title" style="margin-bottom:0; flex:1;">Bilancio &amp; Guadagni</div>
+        <button type="button" class="btn-add-earning-action" id="btn-earnings-add-new" title="Aggiungi un nuovo turno con compenso">
+          <span>+</span> Nuovo Turno / Guadagno
+        </button>
+      </div>
+
+      <!-- Riepilogo Generale & Mese Corrente -->
+      <div class="earnings-summary-grid">
+        <div class="earnings-stat-card highlight-month">
+          <div class="earnings-stat-header">
+            <span class="earnings-stat-icon">📅</span>
+            <span class="earnings-stat-label" id="earnings-focus-month-label">TOTALE MESE CORRENTE</span>
+          </div>
+          <div class="earnings-stat-amount" id="earnings-focus-month-total">€0</div>
+          <div class="earnings-stat-sub" id="earnings-focus-month-meta">0 turni nel mese</div>
+        </div>
+
+        <div class="earnings-stat-card highlight-total">
+          <div class="earnings-stat-header">
+            <span class="earnings-stat-icon">💰</span>
+            <span class="earnings-stat-label">BILANCIO TOTALE COMPLESSIVO</span>
+          </div>
+          <div class="earnings-stat-amount cyan" id="earnings-grand-total">€0</div>
+          <div class="earnings-stat-sub" id="earnings-grand-meta">0 turni registrati • Media €0/turno</div>
+        </div>
+      </div>
+
+      <!-- Box rapido per assegnare compenso a un turno già in calendario -->
+      <div class="earnings-quick-assign-card">
+        <div class="quick-assign-title">⚡ REGISTRA O MODIFICA GUADAGNO SU UN TURNO ESISTENTE</div>
+        <div class="quick-assign-row">
+          <select id="earnings-quick-event-select" class="hud-select" aria-label="Seleziona un turno dal calendario">
+            <option value="">Seleziona un turno dal calendario...</option>
+          </select>
+          <button type="button" class="btn-quick-assign-open" id="btn-quick-assign-open">
+            💰 Imposta Compenso
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra filtro per mese -->
+      <div class="earnings-month-filter-bar" id="earnings-month-filter-bar" role="tablist" aria-label="Filtra guadagni per mese">
+        <button type="button" class="earnings-month-pill active" data-month="ALL">Tutti i Mesi</button>
+      </div>
+
+      <!-- Contenitore Bilancio diviso per Mese -->
+      <div id="earnings-months-list" class="earnings-months-list">
+        <div class="empty-state">CARICAMENTO BILANCIO...</div>
+      </div>
+
+      <!-- Eventuali turni confermati ("Lavoro io") ancora senza compenso inserito -->
+      <div id="earnings-unpaid-work-wrap" class="earnings-unpaid-work-wrap" style="display:none;">
+        <div class="section-title" style="margin-top:8px;">Turni "Lavoro Io" da Contabilizzare</div>
+        <div id="earnings-unpaid-work-list" class="earnings-unpaid-work-list"></div>
+      </div>
+    </section>
+
     <!-- ════ TAB: AVVISI ════ -->
     <section id="tab-alerts" class="tab-panel" role="tabpanel" aria-labelledby="nav-alerts">
       <div class="section-title">Avvisi &amp; Conflitti</div>
@@ -371,6 +431,10 @@
     <button class="nav-tab" id="nav-shifts" role="tab" aria-selected="false" aria-controls="tab-shifts" data-tab="shifts">
       <span class="nav-icon">👷</span>
       <span class="nav-label">Turni</span>
+    </button>
+    <button class="nav-tab" id="nav-earnings" role="tab" aria-selected="false" aria-controls="tab-earnings" data-tab="earnings">
+      <span class="nav-icon">💰</span>
+      <span class="nav-label">Guadagni</span>
     </button>
     <button class="nav-tab" id="nav-alerts" role="tab" aria-selected="false" aria-controls="tab-alerts" data-tab="alerts">
       <span class="nav-icon">⚠️</span>
@@ -1039,13 +1103,19 @@
           <input type="datetime-local" id="new-event-start" required class="hud-input" />
         </div>
         <div class="form-group">
+          <label for="new-event-earnings">GUADAGNO / COMPENSO (€)</label>
+          <input type="number" id="new-event-earnings" placeholder="Es. 50.00" min="0" step="any" class="hud-input" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
           <label for="new-event-duration">DURATA (ORE)</label>
           <input type="number" id="new-event-duration" value="1.5" min="0.5" max="12" step="0.5" class="hud-input" />
         </div>
-      </div>
-      <div class="form-group">
-        <label for="new-event-notes">NOTE (SUB-TEXT)</label>
-        <input type="text" id="new-event-notes" placeholder="Dettagli aggiuntivi, promemoria..." class="hud-input" />
+        <div class="form-group">
+          <label for="new-event-notes">NOTE (SUB-TEXT)</label>
+          <input type="text" id="new-event-notes" placeholder="Dettagli aggiuntivi, promemoria..." class="hud-input" />
+        </div>
       </div>
       <div class="form-actions-wrap">
         <button type="button" class="btn-hud-cancel" id="btn-cancel-add">Annulla</button>
@@ -1101,6 +1171,6 @@
   </div>
 </div>
 
-<script src="/static/app.js?v=2.7.0"></script>
+<script src="/static/app.js?v=2.8.0"></script>
 </body>
 </html>

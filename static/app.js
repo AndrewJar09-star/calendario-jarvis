@@ -8,15 +8,17 @@
 
 // ─── State ──────────────────────────────────────────────────────
 const isMobileInitial = typeof window !== 'undefined' && window.innerWidth <= 768;
+const _initialToday = new Date();
 const STATE = {
   events: [],
   currentView: 'week', // Identica a PC come richiesto dall'utente (visualizzazione Settimana con 7 giorni e turni)
   activeTab: 'calendar',
-  selectedDate: new Date('2026-10-14T09:30:00'), // Default matches screenshot: 14 Ottobre 2026
-  miniCalMonth: new Date('2026-10-01'), // Mini calendar view month
+  selectedDate: new Date(_initialToday.getFullYear(), _initialToday.getMonth(), _initialToday.getDate(), 9, 30, 0), // Giorno corrente (Oggi)
+  miniCalMonth: new Date(_initialToday.getFullYear(), _initialToday.getMonth(), 1), // Mese corrente del mini calendario
   activeCategories: new Set(['NAPOLI', 'STABIA', 'CASERTANA', 'MOSTRA', 'CUSTOM']),
   selectedEvent: null,
   earningsTargetEvent: null,
+  earningsMonthFilter: 'ALL',
   isListening: false,
   isSpeaking: false,
   calendar: null,
@@ -409,6 +411,7 @@ async function syncSoftWithBackend() {
       renderHudCalendar();
       renderNextShift();
       renderShiftsList();
+      renderEarningsTab();
       renderLocalAlerts();
     }
   } catch (e) {
@@ -450,6 +453,7 @@ async function loadEvents() {
     renderHudCalendar();
     renderNextShift();
     renderShiftsList();
+    renderEarningsTab();
     renderLocalAlerts();
 
     // Sincronizzazione discreta in background con nuove partite (senza toccare gli stati/guadagni dell'utente)
@@ -462,6 +466,7 @@ async function loadEvents() {
       renderHudCalendar();
       renderNextShift();
       renderShiftsList();
+      renderEarningsTab();
       renderLocalAlerts();
     }
   }
@@ -691,13 +696,9 @@ function renderHudWeekView() {
 
   // 4. Linea Orario Corrente (con punto luminoso)
   if (timeLineEl) {
-    let curHour = 9, curMin = 45; // Match screenshot per la data 14 Ottobre
-    const selectedYMD = formatYMD(STATE.selectedDate);
-    if (selectedYMD === formatYMD(new Date())) {
-      const now = new Date();
-      curHour = now.getHours();
-      curMin = now.getMinutes();
-    }
+    const now = new Date();
+    const curHour = now.getHours();
+    const curMin = now.getMinutes();
     if (curHour >= 8 && curHour <= 23) {
       const timeTop = ((curHour - 8) + curMin / 60) * 60;
       timeLineEl.style.top = `${timeTop}px`;
@@ -1036,7 +1037,327 @@ function renderShiftsList() {
   });
 }
 
+// ─── Earnings & Monthly Balance Tab (Sezione Guadagni / Bilancio) ────
+function renderEarningsTab() {
+  const focusLabelEl = document.getElementById('earnings-focus-month-label');
+  const focusTotalEl = document.getElementById('earnings-focus-month-total');
+  const focusMetaEl  = document.getElementById('earnings-focus-month-meta');
+  const grandTotalEl = document.getElementById('earnings-grand-total');
+  const grandMetaEl  = document.getElementById('earnings-grand-meta');
+  const filterBarEl  = document.getElementById('earnings-month-filter-bar');
+  const listEl       = document.getElementById('earnings-months-list');
+  const quickSelect  = document.getElementById('earnings-quick-event-select');
+  const unpaidWrap   = document.getElementById('earnings-unpaid-work-wrap');
+  const unpaidList   = document.getElementById('earnings-unpaid-work-list');
+
+  if (!listEl) return;
+
+  const monthNames = [
+    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+  ];
+
+  // Popola select rapida con tutti i turni (non in riposo) ordinati per data
+  if (quickSelect) {
+    const currentVal = quickSelect.value;
+    const selectableEvents = STATE.events
+      .filter(e => !isEventHiddenFromCalendar(e) && e.event_start)
+      .slice()
+      .sort((a, b) => new Date(a.event_start.replace(' ', 'T')) - new Date(b.event_start.replace(' ', 'T')));
+
+    quickSelect.innerHTML = `<option value="">Seleziona un turno dal calendario...</option>` +
+      selectableEvents.map(ev => {
+        const dShort = (ev.event_start || '').slice(0, 10).split('-').reverse().join('/');
+        const earnTag = Number(ev.earnings) > 0 ? ` [${formatEarnings(ev.earnings)}]` : ' [€ da inserire]';
+        return `<option value="${ev.id}">${dShort} — ${ev.title}${earnTag}</option>`;
+      }).join('');
+    if (currentVal && selectableEvents.some(e => String(e.id) === String(currentVal))) {
+      quickSelect.value = currentVal;
+    }
+  }
+
+  // Filtra tutti gli eventi con un guadagno inserito (> 0) e non ignorati/riposo
+  const paidEvents = STATE.events
+    .filter(ev => {
+      if (!ev || !ev.event_start) return false;
+      if (isEventHiddenFromCalendar(ev)) return false;
+      const num = Number(ev.earnings);
+      return !isNaN(num) && num > 0;
+    })
+    .slice()
+    .sort((a, b) => new Date(b.event_start.replace(' ', 'T')) - new Date(a.event_start.replace(' ', 'T')));
+
+  // Raggruppa per mese YYYY-MM
+  const byMonth = {};
+  let grandTotal = 0;
+
+  paidEvents.forEach(ev => {
+    const amount = Number(ev.earnings) || 0;
+    grandTotal += amount;
+    const ym = ev.event_start.slice(0, 7); // "YYYY-MM"
+    if (!byMonth[ym]) {
+      const [yStr, mStr] = ym.split('-');
+      const mIndex = Math.max(0, Math.min(11, parseInt(mStr, 10) - 1));
+      byMonth[ym] = {
+        ym,
+        year: parseInt(yStr, 10),
+        monthIndex: mIndex,
+        monthLabel: `${monthNames[mIndex]} ${yStr}`,
+        total: 0,
+        events: [],
+        byCategory: {}
+      };
+    }
+    byMonth[ym].total += amount;
+    byMonth[ym].events.push(ev);
+
+    const catGroup = classifyEventCategory(ev);
+    byMonth[ym].byCategory[catGroup] = (byMonth[ym].byCategory[catGroup] || 0) + amount;
+  });
+
+  // Ordina i mesi dal più recente al meno recente (o cronologico)
+  const monthKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+
+  // Verifica se il filtro mese selezionato esiste ancora
+  if (STATE.earningsMonthFilter !== 'ALL' && !byMonth[STATE.earningsMonthFilter]) {
+    STATE.earningsMonthFilter = 'ALL';
+  }
+
+  // Calcola card mese in primo piano (Mese filtrato oppure Mese Corrente)
+  const now = new Date();
+  const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonthName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
+  const focusYM = STATE.earningsMonthFilter !== 'ALL' ? STATE.earningsMonthFilter : currentYM;
+  const focusData = byMonth[focusYM];
+
+  if (focusLabelEl) {
+    if (STATE.earningsMonthFilter !== 'ALL' && focusData) {
+      focusLabelEl.textContent = `TOTALE ${focusData.monthLabel.toUpperCase()}`;
+    } else {
+      focusLabelEl.textContent = `TOTALE MESE (${currentMonthName.toUpperCase()})`;
+    }
+  }
+  if (focusTotalEl) {
+    focusTotalEl.textContent = formatEarnings(focusData ? focusData.total : 0) || '€0';
+  }
+  if (focusMetaEl) {
+    const cnt = focusData ? focusData.events.length : 0;
+    const avg = cnt > 0 ? (focusData.total / cnt) : 0;
+    focusMetaEl.textContent = cnt > 0
+      ? `${cnt} ${cnt === 1 ? 'servizio registrato' : 'servizi registrati'} • Media ${formatEarnings(avg)}`
+      : `Nessun guadagno registrato in questo mese`;
+  }
+
+  // Aggiorna card Bilancio Totale Complessivo
+  if (grandTotalEl) {
+    grandTotalEl.textContent = formatEarnings(grandTotal) || '€0';
+  }
+  if (grandMetaEl) {
+    const totalCount = paidEvents.length;
+    const avgAll = totalCount > 0 ? (grandTotal / totalCount) : 0;
+    grandMetaEl.textContent = `${totalCount} ${totalCount === 1 ? 'turno retribuito' : 'turni retribuiti'} in ${monthKeys.length} ${monthKeys.length === 1 ? 'mese' : 'mesi'} • Media ${formatEarnings(avgAll) || '€0'}`;
+  }
+
+  // Renderizza barra filtri mese
+  if (filterBarEl) {
+    const pills = [
+      `<button type="button" class="earnings-month-pill ${STATE.earningsMonthFilter === 'ALL' ? 'active' : ''}" data-month="ALL">Tutti i Mesi (${paidEvents.length})</button>`
+    ];
+    monthKeys.forEach(ym => {
+      const mObj = byMonth[ym];
+      const isAct = STATE.earningsMonthFilter === ym ? 'active' : '';
+      pills.push(
+        `<button type="button" class="earnings-month-pill ${isAct}" data-month="${ym}">
+          ${mObj.monthLabel} <span class="pill-month-sum">${formatEarnings(mObj.total)}</span>
+        </button>`
+      );
+    });
+    filterBarEl.innerHTML = pills.join('');
+
+    filterBarEl.querySelectorAll('.earnings-month-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        STATE.earningsMonthFilter = btn.dataset.month || 'ALL';
+        renderEarningsTab();
+      });
+    });
+  }
+
+  // Renderizza le schede mensili di bilancio
+  const visibleMonths = STATE.earningsMonthFilter === 'ALL'
+    ? monthKeys
+    : monthKeys.filter(k => k === STATE.earningsMonthFilter);
+
+  if (visibleMonths.length === 0) {
+    listEl.innerHTML = `
+      <div class="earnings-empty-card">
+        <div class="earnings-empty-icon">💰</div>
+        <div class="earnings-empty-title">NESSUN GUADAGNO REGISTRATO</div>
+        <div class="earnings-empty-desc">
+          Non hai ancora inserito compensi per i tuoi turni.<br />
+          Puoi registrare un guadagno selezionando un turno dal menu qui sopra, toccando un evento nel <strong>Calendario</strong> e premendo <strong>"Lavoro Io"</strong>, oppure chiedendo a <strong>J.A.R.V.I.S.</strong> (es. <em>"Jarvis metti lavoro io per il Napoli con paga 60 euro"</em>).
+        </div>
+      </div>
+    `;
+  } else {
+    const catLabels = {
+      NAPOLI:    { label: 'SSC Napoli',          glyph: '⚽', cls: 'napoli' },
+      STABIA:    { label: 'Juve Stabia',         glyph: '🐝', cls: 'stabia' },
+      CASERTANA: { label: 'Casertana FC',        glyph: '🦅', cls: 'casertana' },
+      MOSTRA:    { label: 'Mostra d\'Oltremare', glyph: '🏛️', cls: 'mostra' },
+      CUSTOM:    { label: 'Eventi / Personali',  glyph: '📝', cls: 'custom' },
+    };
+
+    listEl.innerHTML = visibleMonths.map(ym => {
+      const mData = byMonth[ym];
+      const isCurrentM = (ym === currentYM);
+      const currentBadge = isCurrentM ? `<span class="month-current-tag">MESE IN CORSO</span>` : '';
+
+      // ordina eventi del mese dal più recente (o cronologico dentro il mese)
+      const monthEventsSorted = mData.events
+        .slice()
+        .sort((a, b) => new Date(a.event_start.replace(' ', 'T')) - new Date(b.event_start.replace(' ', 'T')));
+
+      // Riepilogo per categoria nel mese
+      const catChipsHtml = Object.entries(mData.byCategory).map(([catKey, sumVal]) => {
+        const info = catLabels[catKey] || catLabels.CUSTOM;
+        return `<span class="earnings-cat-chip ${info.cls}">${info.glyph} ${info.label}: <strong>${formatEarnings(sumVal)}</strong></span>`;
+      }).join('');
+
+      // Righe singoli guadagni del mese
+      const rowsHtml = monthEventsSorted.map(ev => {
+        const style = getCategoryStyle(ev);
+        const hudStyle = getHudEventStyle(ev);
+        const dt = new Date(ev.event_start.replace(' ', 'T'));
+        const dayNum = String(dt.getDate()).padStart(2, '0');
+        const weekdayShort = dt.toLocaleDateString('it-IT', { weekday: 'short' }).toUpperCase();
+        const timeStr = formatTime(ev.event_start);
+        const earnStr = formatEarnings(ev.earnings);
+
+        return `
+          <div class="earnings-entry-row" data-event-id="${ev.id}" role="button" tabindex="0" title="Tocca per vedere i dettagli di ${ev.title}">
+            <div class="earnings-entry-date ${hudStyle.class}">
+              <span class="entry-day-num">${dayNum}</span>
+              <span class="entry-day-wk">${weekdayShort}</span>
+            </div>
+            <div class="earnings-entry-info">
+              <div class="earnings-entry-title-row">
+                <span class="earnings-entry-title">${ev.title}</span>
+                <span class="cat-badge ${style.badgeClass}">${style.label}</span>
+              </div>
+              <div class="earnings-entry-meta">
+                <span>⏰ ${timeStr}</span>
+                ${ev.venue ? `<span>• 📍 ${ev.venue}</span>` : ''}
+              </div>
+            </div>
+            <div class="earnings-entry-right">
+              <div class="earnings-entry-amount">+${earnStr}</div>
+              <button type="button" class="btn-entry-edit-earning" data-edit-id="${ev.id}" title="Modifica compenso" aria-label="Modifica compenso di ${ev.title}">
+                ✏️
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="earnings-month-card" data-ym="${ym}">
+          <div class="earnings-month-header">
+            <div class="earnings-month-title-wrap">
+              <div class="earnings-month-name-row">
+                <span class="earnings-month-name">${mData.monthLabel.toUpperCase()}</span>
+                ${currentBadge}
+              </div>
+              <div class="earnings-month-count">
+                ${mData.events.length} ${mData.events.length === 1 ? 'servizio registrato' : 'servizi registrati'} nel mese
+              </div>
+            </div>
+            <div class="earnings-month-total-box">
+              <span class="month-total-caption">TOTALE MESE</span>
+              <span class="month-total-value">${formatEarnings(mData.total)}</span>
+            </div>
+          </div>
+
+          <div class="earnings-month-cats">${catChipsHtml}</div>
+
+          <div class="earnings-entries-list">
+            ${rowsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Click sul pulsante modifica compenso ✏️
+    listEl.querySelectorAll('.btn-entry-edit-earning').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.editId, 10);
+        const ev = STATE.events.find(x => x.id === id);
+        if (ev) openEarningsModal(ev);
+      });
+    });
+
+    // Click sulla riga evento -> apre dettagli Bottom Sheet
+    listEl.querySelectorAll('.earnings-entry-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = parseInt(row.dataset.eventId, 10);
+        const ev = STATE.events.find(x => x.id === id);
+        if (ev) openBottomSheet(ev);
+      });
+    });
+  }
+
+  // Turni con stato "Lavoro io" ma ancora senza compenso (earnings == 0 o null)
+  if (unpaidWrap && unpaidList) {
+    const unpaidWork = STATE.events
+      .filter(e => {
+        if (!e || !e.event_start) return false;
+        const st = (e.status || '').toLowerCase();
+        const hasEarn = Number(e.earnings) > 0;
+        return st.includes('lavoro') && !hasEarn;
+      })
+      .sort((a, b) => new Date(a.event_start.replace(' ', 'T')) - new Date(b.event_start.replace(' ', 'T')));
+
+    if (unpaidWork.length > 0) {
+      unpaidWrap.style.display = 'block';
+      unpaidList.innerHTML = unpaidWork.map(ev => {
+        return `
+          <div class="earnings-unpaid-item">
+            <div class="unpaid-item-info">
+              <div class="unpaid-item-title">${ev.title}</div>
+              <div class="unpaid-item-meta">${formatDateTime(ev.event_start)} ${ev.venue ? `• ${ev.venue}` : ''}</div>
+            </div>
+            <button type="button" class="btn-unpaid-set" data-event-id="${ev.id}">
+              + Inserisci €
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      unpaidList.querySelectorAll('.btn-unpaid-set').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.eventId, 10);
+          const ev = STATE.events.find(x => x.id === id);
+          if (ev) openEarningsModal(ev);
+        });
+      });
+    } else {
+      unpaidWrap.style.display = 'none';
+      unpaidList.innerHTML = '';
+    }
+  }
+}
+
 // ─── Alerts ─────────────────────────────────────────────────────
+function renderLocalAlerts() {
+  try {
+    const data = computeLocalAlertsData(STATE.events || []);
+    renderAlerts(data);
+  } catch (err) {
+    console.warn('Errore calcolo avvisi locali:', err);
+  }
+}
+
 async function loadAlerts() {
   try {
     const data = await apiGet('/api/alerts');
@@ -1231,6 +1552,7 @@ async function confirmEvent(status) {
   renderHudCalendar();
   renderNextShift();
   renderShiftsList();
+  renderEarningsTab();
   renderLocalAlerts();
 
   // Se l'utente ha impostato 'Lavoro io', apri la schermata per inserire quanti soldi guadagna da quella chiamata
@@ -1316,6 +1638,9 @@ async function handleEarningsSubmit(e) {
   const target = STATE.events.find(e => e.id === ev.id);
   if (target) {
     target.earnings = amount;
+    if (amount !== null && amount > 0 && (!target.status || target.status === 'Da confermare')) {
+      target.status = 'Lavoro io';
+    }
     saveLocalEvents(STATE.events);
   }
 
@@ -1329,6 +1654,7 @@ async function handleEarningsSubmit(e) {
   renderHudCalendar();
   renderNextShift();
   renderShiftsList();
+  renderEarningsTab();
 
   // Sincronizza col backend in background se online
   try {
@@ -1357,6 +1683,7 @@ async function deleteCurrentEvent() {
   renderHudCalendar();
   renderNextShift();
   renderShiftsList();
+  renderEarningsTab();
   renderLocalAlerts();
 
   try {
@@ -1425,6 +1752,7 @@ function switchTab(tabId) {
   if (tabId === 'calendar' && STATE.calendar) {
     requestAnimationFrame(() => STATE.calendar.updateSize());
   }
+  if (tabId === 'earnings') renderEarningsTab();
   if (tabId === 'alerts') loadAlerts();
 }
 
@@ -2108,6 +2436,7 @@ function executeLocalJarvisCommand(cmd) {
     renderHudCalendar();
     renderNextShift();
     renderShiftsList();
+    renderEarningsTab();
     renderLocalAlerts();
     setTimeout(() => scrollToEventOrDay(formatYMD(eventDate)), 200);
 
@@ -2185,6 +2514,7 @@ function executeLocalJarvisCommand(cmd) {
       renderHudCalendar();
       renderNextShift();
       renderShiftsList();
+      renderEarningsTab();
       renderLocalAlerts();
       jarvisSpeak(`Ho impostato lo stato di ${target.title} su ${newStatus}.`);
       showToast(`Stato aggiornato: ${newStatus}`, 'success');
@@ -2204,12 +2534,30 @@ function executeLocalJarvisCommand(cmd) {
         renderHudCalendar();
         renderNextShift();
         renderShiftsList();
+        renderEarningsTab();
         renderLocalAlerts();
         jarvisSpeak(`Ho eliminato ${match.title} dal tuo calendario.`);
         showToast(`Evento "${match.title}" eliminato!`, 'info');
         return true;
       }
     }
+  }
+
+  // 5. Consultazione Guadagni & Bilancio Mensile
+  if (lower.includes('guadagn') || lower.includes('bilancio') || lower.includes('quanto ho fatto') || lower.includes('quanto prendo') || lower.includes('paga totale')) {
+    switchTab('earnings');
+    const paid = STATE.events.filter(e => !isEventHiddenFromCalendar(e) && Number(e.earnings) > 0);
+    if (!paid.length) {
+      jarvisSpeak('Al momento non risultano guadagni registrati nel tuo bilancio, signore. Ho aperto la sezione Guadagni per te.');
+      return true;
+    }
+    const tot = paid.reduce((acc, e) => acc + (Number(e.earnings) || 0), 0);
+    const now = new Date();
+    const curYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const curMonthEvents = paid.filter(e => (e.event_start || '').startsWith(curYM));
+    const curMonthTot = curMonthEvents.reduce((acc, e) => acc + (Number(e.earnings) || 0), 0);
+    jarvisSpeak(`Ho aperto la sezione Guadagni, signore. Il bilancio complessivo è di ${tot.toFixed(0)} euro su ${paid.length} turni registrati, di cui ${curMonthTot.toFixed(0)} euro nel mese corrente.`);
+    return true;
   }
 
   return false;
@@ -2327,6 +2675,7 @@ async function processVoiceCommand(cmd) {
           renderHudCalendar();
           renderNextShift();
           renderShiftsList();
+          renderEarningsTab();
           renderLocalAlerts();
         } else {
           await loadEvents();
@@ -2338,6 +2687,11 @@ async function processVoiceCommand(cmd) {
         } else if (res.action === 'status_updated') {
           showToast('Stato turno aggiornato da J.A.R.V.I.S.', 'success');
         }
+      }
+
+      if (res.action === 'open_earnings') {
+        switchTab('earnings');
+        renderEarningsTab();
       }
 
       // Posizionamento calendario sull'evento o sulla data richiesta
@@ -2583,7 +2937,7 @@ function queryTeam(keyword, teamName) {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/static/sw.js?v=2.6.0', { scope: '/' })
+      navigator.serviceWorker.register('/static/sw.js?v=2.8.0', { scope: '/' })
         .then(reg => {
           console.log('SW registrato:', reg.scope);
           // Verifica immediatamente se c'è una nuova versione sul server
@@ -2611,6 +2965,12 @@ function hideLoading() {
 
 // ─── Init ───────────────────────────────────────────────────────
 async function init() {
+  // Imposta immediatamente il calendario sul giorno corrente (Oggi) all'avvio
+  const todayNow = new Date();
+  STATE.selectedDate = new Date(todayNow.getFullYear(), todayNow.getMonth(), todayNow.getDate(), 9, 30, 0);
+  STATE.miniCalMonth = new Date(todayNow.getFullYear(), todayNow.getMonth(), 1);
+  renderHudCalendar();
+
   // Clock
   updateClock();
   setInterval(updateClock, 1000);
@@ -2745,6 +3105,8 @@ function openAddEventModal() {
     const ymd = formatYMD(STATE.selectedDate);
     startInput.value = `${ymd}T10:00`;
   }
+  const earnInput = document.getElementById('new-event-earnings');
+  if (earnInput) earnInput.value = '';
 }
 
 function closeAddEventModal() {
@@ -2760,9 +3122,16 @@ async function handleAddEventSubmit(e) {
   const category = document.getElementById('new-event-category')?.value || 'CUSTOM';
   const venue = document.getElementById('new-event-venue')?.value.trim() || 'Steward';
   const startRaw = document.getElementById('new-event-start')?.value;
+  const earningsRaw = document.getElementById('new-event-earnings')?.value.trim();
   const notes = document.getElementById('new-event-notes')?.value.trim() || 'Sub-text';
 
   if (!title || !startRaw) return;
+
+  let parsedEarnings = 0.0;
+  if (earningsRaw !== undefined && earningsRaw !== '') {
+    const num = parseFloat(earningsRaw);
+    if (!isNaN(num) && num >= 0) parsedEarnings = num;
+  }
 
   const eventStart = startRaw.replace('T', ' ') + ':00';
   let callTime = eventStart;
@@ -2786,7 +3155,7 @@ async function handleAddEventSubmit(e) {
     call_time: callTime,
     notes,
     status: 'Lavoro io',
-    earnings: 0.0,
+    earnings: parsedEarnings,
     conflict: false
   };
 
@@ -2794,14 +3163,16 @@ async function handleAddEventSubmit(e) {
   STATE.events.push(newEv);
   saveLocalEvents(STATE.events);
 
-  showToast('Evento creato con successo!', 'success');
+  showToast(parsedEarnings > 0 ? `Evento creato con guadagno €${parsedEarnings.toFixed(2)}!` : 'Evento creato con successo!', 'success');
   closeAddEventModal();
 
   recomputeLocalConflicts(STATE.events);
   STATE.selectedDate = new Date(startRaw);
+  STATE.miniCalMonth = new Date(STATE.selectedDate.getFullYear(), STATE.selectedDate.getMonth(), 1);
   renderHudCalendar();
   renderNextShift();
   renderShiftsList();
+  renderEarningsTab();
   renderLocalAlerts();
 
   // Sincronizza col backend in background se online
@@ -2845,11 +3216,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHudCalendar();
   });
 
-  // HUD Top Navigation: Oggi (Reset a data odierna / 14 Ottobre demo)
+  // HUD Top Navigation: Oggi (Porta sempre al giorno corrente reale)
   document.getElementById('hud-btn-today')?.addEventListener('click', () => {
-    STATE.selectedDate = new Date('2026-10-14T09:30:00');
-    STATE.miniCalMonth = new Date('2026-10-01');
-    STATE.currentView = 'week';
+    const now = new Date();
+    STATE.selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 30, 0);
+    STATE.miniCalMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     renderHudCalendar();
   });
 
@@ -3020,6 +3391,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add Event Modal
   document.getElementById('btn-quick-add-event')?.addEventListener('click', openAddEventModal);
+  document.getElementById('btn-earnings-add-new')?.addEventListener('click', () => {
+    openAddEventModal();
+    setTimeout(() => document.getElementById('new-event-title')?.focus(), 100);
+  });
+  document.getElementById('btn-quick-assign-open')?.addEventListener('click', () => {
+    const sel = document.getElementById('earnings-quick-event-select');
+    const selectedId = sel ? parseInt(sel.value, 10) : NaN;
+    if (!selectedId || isNaN(selectedId)) {
+      showToast('Seleziona prima un turno dal menu a tendina', 'info');
+      return;
+    }
+    const ev = STATE.events.find(x => x.id === selectedId);
+    if (ev) openEarningsModal(ev);
+  });
   document.getElementById('btn-close-add-event')?.addEventListener('click', closeAddEventModal);
   document.getElementById('btn-cancel-add')?.addEventListener('click', closeAddEventModal);
   document.getElementById('add-event-overlay')?.addEventListener('click', (e) => {
@@ -3157,6 +3542,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderHudCalendar();
       renderNextShift();
       renderShiftsList();
+      renderEarningsTab();
       renderLocalAlerts();
       showToast('Database locale ripristinato con successo!', 'success');
       closeSettingsModal();

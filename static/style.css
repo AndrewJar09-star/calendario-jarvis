@@ -2161,6 +2161,7 @@ body::before {
 }
 
 #tab-shifts.tab-panel,
+#tab-earnings.tab-panel,
 #tab-alerts.tab-panel,
 #tab-sync.tab-panel {
   flex: 1;
@@ -4491,5 +4492,542 @@ body::before {
 .tips-bullet-list li strong {
   color: #FFAE33;
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   SEZIONE GUADAGNI & BILANCIO MENSILE (#tab-earnings)
+   ═════════════════════════════════════════════════════════════════ */
+.earnings-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-add-earning-action {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.32) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  color: #10B981;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.18);
+  white-space: nowrap;
+}
+
+.btn-add-earning-action:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.34) 0%, rgba(5, 150, 105, 0.48) 100%);
+  color: #FFFFFF;
+  border-color: #10B981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.earnings-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.earnings-stat-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-hud);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.earnings-stat-card.highlight-month {
+  border-color: rgba(16, 185, 129, 0.4);
+  border-left: 4px solid #10B981;
+  background-image: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(13, 22, 38, 0) 60%);
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.1);
+}
+
+.earnings-stat-card.highlight-total {
+  border-color: rgba(0, 229, 255, 0.35);
+  border-left: 4px solid var(--cyan);
+  background-image: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(13, 22, 38, 0) 60%);
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.08);
+}
+
+.earnings-stat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.earnings-stat-icon {
+  font-size: 16px;
+}
+
+.earnings-stat-label {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: rgba(232, 244, 255, 0.75);
+  text-transform: uppercase;
+}
+
+.earnings-stat-amount {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 800;
+  color: #10B981;
+  line-height: 1.1;
+  text-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.earnings-stat-amount.cyan {
+  color: var(--cyan);
+  text-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+}
+
+.earnings-stat-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(232, 244, 255, 0.65);
+}
+
+/* Quick Assign Bar */
+.earnings-quick-assign-card {
+  background: rgba(11, 19, 33, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-assign-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+}
+
+.quick-assign-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.quick-assign-row .hud-select {
+  flex: 1;
+  min-width: 200px;
+}
+
+.btn-quick-assign-open {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #10B981;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-quick-assign-open:hover {
+  background: rgba(16, 185, 129, 0.3);
+  color: #FFFFFF;
+  border-color: #10B981;
+}
+
+/* Month Filter Pills */
+.earnings-month-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+  scrollbar-width: thin;
+}
+
+.earnings-month-pill {
+  background: rgba(13, 22, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(232, 244, 255, 0.75);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.earnings-month-pill:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #FFFFFF;
+}
+
+.earnings-month-pill.active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10B981;
+  color: #FFFFFF;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.pill-month-sum {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.14);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+/* Monthly Balance Cards */
+.earnings-months-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.earnings-month-card {
+  background: rgba(10, 18, 31, 0.85);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.earnings-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(0, 229, 255, 0.05) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.earnings-month-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.earnings-month-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #FFFFFF;
+}
+
+.month-current-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #00E5FF;
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.earnings-month-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(232, 244, 255, 0.6);
+  margin-top: 3px;
+}
+
+.earnings-month-total-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: rgba(6, 12, 22, 0.75);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+
+.month-total-caption {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(232, 244, 255, 0.55);
+}
+
+.month-total-value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 800;
+  color: #10B981;
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.earnings-month-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(6, 11, 20, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.earnings-cat-chip {
+  font-family: var(--font-body);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(232, 244, 255, 0.85);
+}
+
+.earnings-cat-chip.napoli    { border-color: rgba(0, 168, 255, 0.35); color: #70cfff; }
+.earnings-cat-chip.stabia    { border-color: rgba(245, 183, 0, 0.35); color: #ffd24c; }
+.earnings-cat-chip.casertana { border-color: rgba(255, 0, 85, 0.35); color: #ff7aa2; }
+.earnings-cat-chip.mostra    { border-color: rgba(16, 185, 129, 0.35); color: #5eead4; }
+.earnings-cat-chip.custom    { border-color: rgba(192, 132, 252, 0.35); color: #d8b4fe; }
+
+.earnings-entries-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.earnings-entry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.earnings-entry-row:last-child {
+  border-bottom: none;
+}
+
+.earnings-entry-row:hover {
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.earnings-entry-date {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(14, 24, 40, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+.earnings-entry-date.napoli    { border-color: #00a8ff; box-shadow: inset 0 0 8px rgba(0, 168, 255, 0.2); }
+.earnings-entry-date.stabia    { border-color: #f5b700; box-shadow: inset 0 0 8px rgba(245, 183, 0, 0.2); }
+.earnings-entry-date.casertana { border-color: #ff0055; box-shadow: inset 0 0 8px rgba(255, 0, 85, 0.2); }
+.earnings-entry-date.mostra    { border-color: #10B981; box-shadow: inset 0 0 8px rgba(16, 185, 129, 0.2); }
+.earnings-entry-date.custom    { border-color: #c084fc; box-shadow: inset 0 0 8px rgba(192, 132, 252, 0.2); }
+
+.entry-day-num {
+  font-size: 14px;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1.1;
+}
+
+.entry-day-wk {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: rgba(232, 244, 255, 0.6);
+}
+
+.earnings-entry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.earnings-entry-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+
+.earnings-entry-title {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.earnings-entry-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(232, 244, 255, 0.6);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.earnings-entry-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.earnings-entry-amount {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-entry-edit-earning {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.btn-entry-edit-earning:hover {
+  background: rgba(0, 229, 255, 0.16);
+  border-color: var(--cyan);
+}
+
+/* Empty State Card for Earnings */
+.earnings-empty-card {
+  background: rgba(11, 19, 33, 0.75);
+  border: 1px dashed rgba(16, 185, 129, 0.35);
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.earnings-empty-icon {
+  font-size: 36px;
+}
+
+.earnings-empty-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: #10B981;
+  letter-spacing: 0.08em;
+}
+
+.earnings-empty-desc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: rgba(232, 244, 255, 0.7);
+  max-width: 520px;
+}
+
+/* Unpaid "Lavoro io" Shifts Box */
+.earnings-unpaid-work-wrap {
+  margin-top: 20px;
+}
+
+.earnings-unpaid-work-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.earnings-unpaid-item {
+  background: rgba(255, 159, 28, 0.07);
+  border: 1px solid rgba(255, 159, 28, 0.3);
+  border-left: 3px solid var(--amber);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.unpaid-item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.unpaid-item-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(232, 244, 255, 0.65);
+  margin-top: 2px;
+}
+
+.btn-unpaid-set {
+  background: rgba(255, 159, 28, 0.18);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-unpaid-set:hover {
+  background: var(--amber);
+  color: #060B14;
+}
+
 
 

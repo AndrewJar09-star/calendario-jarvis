@@ -847,16 +847,57 @@ def process_jarvis_command(cmd: str, events: list, client_date: Optional[str] = 
             f"La convocazione generale è fissata per le {call_txt}, signore."
         ), ev, "view_date"
 
-    # 5.6 Guadagni e Compensi
-    if any(k in cmd_lower for k in ["guadagn", "compenso", "quanto prendo", "soldi", "paga totale"]):
-        work_events = [e for e in events if (e.get("earnings") is not None and float(e.get("earnings") or 0) > 0)]
+    # 5.6 Guadagni, Compensi e Bilancio Mensile
+    if any(k in cmd_lower for k in ["guadagn", "compenso", "quanto prendo", "soldi", "paga totale", "bilancio", "incass", "quanto ho fatto"]):
+        work_events = [
+            e for e in events
+            if (e.get("earnings") is not None and float(e.get("earnings") or 0) > 0)
+            and "riposo" not in (e.get("status") or "").lower()
+            and "ignora" not in (e.get("status") or "").lower()
+        ]
         if not work_events:
-            return "Al momento non risultano compensi registrati per i suoi turni in calendario, signore. Può inserire il compenso direttamente toccando un evento o confermandolo.", None, None
+            return (
+                "Al momento non risultano compensi registrati per i suoi turni in calendario, signore. "
+                "Ho aperto per lei la sezione Guadagni dove può inserire o consultare il bilancio mensile.",
+                None,
+                "open_earnings"
+            )
+
         tot = sum(float(e.get("earnings") or 0) for e in work_events)
+
+        # Verifica se l'utente ha chiesto di un mese specifico
+        mesi_nomi = {
+            "gennaio": "01", "febbraio": "02", "marzo": "03", "aprile": "04",
+            "maggio": "05", "giugno": "06", "luglio": "07", "agosto": "08",
+            "settembre": "09", "ottobre": "10", "novembre": "11", "dicembre": "12"
+        }
+        asked_month_name = None
+        asked_month_num = None
+        for m_name, m_num in mesi_nomi.items():
+            if m_name in cmd_lower:
+                asked_month_name = m_name
+                asked_month_num = m_num
+                break
+
+        if asked_month_num:
+            month_evs = [
+                e for e in work_events
+                if len(e.get("event_start") or "") >= 7 and (e.get("event_start") or "")[5:7] == asked_month_num
+            ]
+            m_tot = sum(float(e.get("earnings") or 0) for e in month_evs)
+            return (
+                f"Signore, nel mese di {asked_month_name} ha registrato {len(month_evs)} turni retribuiti "
+                f"per un totale mensile di {int(m_tot)} euro, su un bilancio complessivo di {int(tot)} euro.",
+                month_evs[0] if month_evs else work_events[0],
+                "open_earnings"
+            )
+
         return (
-            f"Signore, in base ai turni per i quali ha inserito il compenso, il suo guadagno complessivo ammonta a {int(tot)} euro "
-            f"su un totale di {len(work_events)} chiamate registrate."
-        ), work_events[0], "view_date"
+            f"Signore, in base al suo bilancio attuale, il guadagno complessivo ammonta a {int(tot)} euro "
+            f"su un totale di {len(work_events)} turni registrati. Ho aperto la sezione Guadagni con il dettaglio diviso per mese.",
+            work_events[0],
+            "open_earnings"
+        )
 
     # 5.7 Conflitti / Sovrapposizioni
     if any(k in cmd_lower for k in ["conflitt", "sovrapposiz", "coincidenz", "doppio"]):
