@@ -21,12 +21,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from database import (
-    insert_or_update_event,
     get_alerts,
     init_db,
     sanitize_and_deduplicate_db,
-    clean_display_title,
-    normalize_event_key,
+    reconcile_venue_events,
 )
 
 # Configurazione logging
@@ -84,14 +82,16 @@ MOSTRA_CONFIG = {
 
 def seed_initial_data() -> List[Dict[str, Any]]:
     """
-    Ritorna il calendario ufficiale completo 2026/2027 (91 eventi totali) per le 4 sedi:
-    - Stadio Maradona (SSC Napoli): 24 partite in casa
+    Ritorna il calendario ufficiale 2026/2027 (dal 16/10/2026) per le 4 sedi, usato come
+    FALLBACK quando lo scraping live di una sede fallisce.
+    Verificato il 12/11/2026 su Transfermarkt (stagione 2026/27) e mostradoltremare.it:
+    - Stadio Maradona (SSC Napoli): 20 partite in casa
     - Stadio Romeo Menti (SS Juve Stabia): 17 partite in casa
     - Stadio Alberto Pinto (Casertana FC): 14 partite in casa
-    - Mostra d'Oltremare: 36 eventi fieristici, congressi e spettacoli
+    - Mostra d'Oltremare: 53 eventi fieristici, congressi e spettacoli
     """
     return [
-        # --- STADIO MARADONA (SSC Napoli) - 24 Partite ---
+        # --- STADIO MARADONA (SSC Napoli) - 20 Partite ---
         {
             "title": "Napoli vs Bodø/Glimt",
             "venue": "Stadio Maradona",
@@ -105,20 +105,6 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "category": "CALCIO",
             "event_start": "2026-10-24 18:00:00",
             "notes": "Serie A – Derby del Sole allo Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Bologna",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-11-01 18:00:00",
-            "notes": "Serie A – Stadio Diego Armando Maradona",
-        },
-        {
-            "title": "Napoli vs Feyenoord",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-11-04 21:00:00",
-            "notes": "Champions League – Notte europea allo Stadio Maradona",
         },
         {
             "title": "Napoli vs Lazio",
@@ -135,13 +121,6 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Serie A – Anticipo serale allo Stadio Maradona",
         },
         {
-            "title": "Napoli vs Empoli",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-11-29 15:00:00",
-            "notes": "Serie A – Stadio Diego Armando Maradona",
-        },
-        {
             "title": "Napoli vs Lecce",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
@@ -149,7 +128,7 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Serie A – Stadio Diego Armando Maradona",
         },
         {
-            "title": "Napoli vs Club Bruges",
+            "title": "Napoli vs Club Brugge",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
             "event_start": "2026-12-08 21:00:00",
@@ -177,11 +156,11 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Serie A – Stadio Diego Armando Maradona",
         },
         {
-            "title": "Napoli vs Verona",
+            "title": "Napoli vs Fiorentina",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
             "event_start": "2027-01-17 15:00:00",
-            "notes": "Serie A – Stadio Diego Armando Maradona",
+            "notes": "Serie A – Stadio Diego Armando Maradona (orario da confermare)",
         },
         {
             "title": "Napoli vs Viking FK",
@@ -203,13 +182,6 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "category": "CALCIO",
             "event_start": "2027-02-14 15:00:00",
             "notes": "Serie A – Classico al Maradona",
-        },
-        {
-            "title": "Napoli vs Como",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2027-02-28 15:00:00",
-            "notes": "Serie A – Stadio Diego Armando Maradona",
         },
         {
             "title": "Napoli vs Parma",
@@ -515,7 +487,7 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "title": "QUALCOSA E' ANDATO STORTO!",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
-            "event_start": "2026-10-22 21:00:00",
+            "event_start": "2026-10-24 21:00:00",
             "notes": "Teatro Mediterraneo – Spettacolo teatrale",
         },
         {
@@ -543,7 +515,7 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "title": "Concerto di Carmelo Zappulla",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
-            "event_start": "2026-10-31 21:00:00",
+            "event_start": "2026-10-31 20:30:00",
             "notes": "Teatro Mediterraneo – Concerto live",
         },
         {
@@ -627,7 +599,7 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "title": "FINCHE' GIUDICE NON CI SEPARI",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
-            "event_start": "2026-12-03 21:00:00",
+            "event_start": "2026-12-04 21:00:00",
             "notes": "Teatro Mediterraneo – Commedia teatrale",
         },
         {
@@ -735,6 +707,42 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "event_start": "2027-10-14 13:00:00",
             "notes": "65° Congresso Nazionale Società Italiana Chirurgia della Mano",
         },
+
+        # --- MOSTRA D'OLTREMARE: eventi ufficiali aggiunti (verificati su mostradoltremare.it, 12/11/2026) ---
+        {"title": "Gonzalo Plays Pino", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-10-28 21:00:00", "notes": "Concerto"},
+        {"title": "CONCORSO UNIVERSITA' LINK CAMPUS", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-10-30 13:00:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "Congresso ADO 2026", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-05 08:00:00", "notes": "Congresso (fino al 06/11)"},
+        {"title": "CONCORSO ABILITAZIONE TFA ANNO ACCADEMICO 2026-2027", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-09 08:00:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "Billy Cobham Time Machine", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-10 20:30:00", "notes": "Concerto"},
+        {"title": "CONCORSO FONDAZIONE PASCALE", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-11 11:00:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "CONCORSO MIC 1800", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-13 09:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "CONCORSO MIC 1800", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-16 09:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso (fino al 19/11)"},
+        {"title": "LA SCUOLA ADOTTA UN MONUMENTO 2026", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-18 10:00:00", "notes": "Manifestazione presso Mostra d'Oltremare"},
+        {"title": "CONCORSO MIC 1800", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-20 09:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "CONCORSO ARUS", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-23 10:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "CONCORSO MINISTERO GIUSTIZIA", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-24 12:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso"},
+        {"title": "GRAND PRIX DE LA DANSE 2026", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-11-28 16:00:00", "notes": "Manifestazione di danza (fino al 29/11)"},
+        {"title": "ARTISTI IN DIVISA Napoli Edition", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-12-02 20:00:00", "notes": "Spettacolo serale"},
+        {"title": "TATTOO LAB PROJECT", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-12-04 15:00:00", "notes": "Fiera del tatuaggio (fino al 06/12)"},
+        {"title": "PIZZA DOC AWARDS 2026", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-12-09 00:00:00", "notes": "Premiazione presso Mostra d'Oltremare"},
+        {"title": "VESUVIO TATTOO FESTIVAL 2026", "venue": "Mostra d'Oltremare", "category": "FIERA",
+         "event_start": "2026-12-11 11:00:00", "notes": "Fiera del tatuaggio (fino al 13/12)"},
     ]
 
 
@@ -794,11 +802,13 @@ def scrape_football_matches() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
 
                 # Estrazione orario (formato HH:MM)
                 time_str = "15:00:00"
+                time_found = False
                 for t in texts:
                     tm = re.search(r"^(\d{1,2}):(\d{2})$", t)
                     if tm:
                         h, mn = tm.groups()
                         time_str = f"{int(h):02d}:{mn}:00"
+                        time_found = True
                         break
 
                 event_start = f"{date_str} {time_str}"
@@ -831,12 +841,23 @@ def scrape_football_matches() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
                 opponent = re.sub(r"\(\d+\.?\)", "", opponent).strip()
 
                 title = f"{team_name} vs {opponent}"
+                # Competizione (Serie A, Champions League, Coppa Italia...) dall'intestazione del box
+                competition = ""
+                box = tr.find_parent("div", class_="box")
+                if box:
+                    head = box.find(class_=re.compile(r"content-box-headline"))
+                    if head:
+                        competition = head.get_text(" ", strip=True)
+                notes = f"{competition} – " if competition else ""
+                notes += f"{cfg['notes_prefix']} ({venue})"
+                if not time_found:
+                    notes += " – orario da confermare"
                 match_item = {
                     "title": title,
                     "venue": venue,
                     "category": "CALCIO",
                     "event_start": event_start,
-                    "notes": f"{cfg['notes_prefix']} ({venue})",
+                    "notes": notes,
                 }
                 team_matches.append(match_item)
 
@@ -869,10 +890,25 @@ def scrape_mostra_doltremare() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     # Tentativo 1: Tribe Events REST API integrata in WordPress (leggerissima, dati nativi e precisi)
     try:
         logger.info(f"Tentativo recupero eventi Mostra d'Oltremare da API: {MOSTRA_CONFIG['api_url']}")
-        resp = requests.get(MOSTRA_CONFIG["api_url"], headers=HTTP_HEADERS, timeout=10)
-        if resp.status_code == 200:
+        raw_events = []
+        seen_ids = set()
+        next_url = MOSTRA_CONFIG["api_url"]
+        for _page in range(10):  # paginazione Tribe Events (max 10 pagine)
+            resp = requests.get(next_url, headers=HTTP_HEADERS, timeout=10)
+            if resp.status_code != 200:
+                break
             data = resp.json()
-            raw_events = data.get("events", [])
+            new_on_page = 0
+            for rev in data.get("events", []):
+                if rev.get("id") in seen_ids:
+                    continue
+                seen_ids.add(rev.get("id"))
+                raw_events.append(rev)
+                new_on_page += 1
+            next_url = data.get("next_rest_url")
+            if not next_url or new_on_page == 0:
+                break
+        if raw_events:
             for rev in raw_events:
                 raw_title = rev.get("title", "")
                 title = html.unescape(raw_title).strip()
@@ -999,10 +1035,11 @@ def sync_all_events(force_seed: bool = False) -> Dict[str, Any]:
     1. Esegue lo scraping delle 3 squadre di calcio (Transfermarkt) e di Mostra d'Oltremare.
     2. Se force_seed=True oppure una sorgente non restituisce eventi futuri, attiva il
        fallback intelligente da `seed_initial_data()` per garantire un DB sempre pieno.
-    3. Esegue `insert_or_update_event` per ogni evento:
+    3. Esegue `reconcile_venue_events` per ogni sede:
+       - Abbina gli eventi per (titolo, data): partite omonime non collidono.
        - Calcola automaticamente il `call_time` (CALCIO -> -4h, FIERA -> 08:30).
-       - Rileva eventuali cambi di orario impostando `updated_flag = 1`.
-       - Evita duplicati matching per (title, venue).
+       - Rileva eventuali cambi di orario impostando `updated_flag = 1` (solo dati live).
+       - Elimina gli eventi inesistenti nel calendario ufficiale (non quelli gestiti dall'utente).
     4. Restituisce le statistiche complete e gli avvisi attivi (cambi orario e conflitti).
     """
     init_db()
@@ -1023,62 +1060,50 @@ def sync_all_events(force_seed: bool = False) -> Dict[str, Any]:
         # Scraping Mostra d'Oltremare
         mostra_events, mostra_stats = scrape_mostra_doltremare()
 
-    # 1. Garantisce SEMPRE che l'intero calendario ufficiale 2026/2027 (seed_pool)
-    #    sia presente nel database in ordine deterministico (inclusi ottobre/novembre 2026),
-    #    così gli ID e le date non slittano mai tra riavvii del server.
-    saved_records = []
+    # Per ogni sede: se lo scraping live ha restituito eventi, quella è la fonte ufficiale
+    # (dati sempre aggiornati); altrimenti si usa il seed verificato come fallback.
+    # La riconciliazione abbina per (titolo, data), quindi partite omonime nella stessa
+    # stagione (es. Coppa Italia + Serie A) non collidono più, ed elimina gli eventi
+    # che non esistono nel calendario ufficiale (preservando quelli gestiti dall'utente).
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    live_by_venue = {
+        "Stadio Maradona": [e for e in football_events if e["venue"] == "Stadio Maradona"],
+        "Stadio Romeo Menti": [e for e in football_events if e["venue"] == "Stadio Romeo Menti"],
+        "Stadio Alberto Pinto": [e for e in football_events if e["venue"] == "Stadio Alberto Pinto"],
+        "Mostra d'Oltremare": mostra_events,
+    }
+
+    saved_records: List[str] = []
     time_changes_count = 0
+    canonical_used: List[Dict[str, Any]] = []
+    reconcile_reports: List[Dict[str, Any]] = []
 
-    for seed_ev in seed_pool:
+    for venue, live_events in live_by_venue.items():
+        venue_seed = [e for e in seed_pool if e["venue"] == venue]
+        if live_events and not force_seed:
+            official, since, flag = live_events, today_str, True
+        else:
+            fallback_applied_venues.append(venue)
+            official = venue_seed
+            since = min((e["event_start"] for e in venue_seed), default=today_str)
+            flag = False
         try:
-            seed_copy = dict(seed_ev)
-            seed_copy["reset_updated_flag"] = True
-            saved = insert_or_update_event(seed_copy)
-            saved_records.append(saved)
+            rep = reconcile_venue_events(venue, official, since, flag_changes=flag)
+            rep["source"] = "live" if flag else "seed"
+            reconcile_reports.append(rep)
+            canonical_used.extend(official)
+            saved_records.extend(rep["inserted"] + rep["updated"])
+            if flag:
+                time_changes_count += len(rep["updated"])
+            if rep["deleted"]:
+                logger.info(f"[{venue}] rimossi eventi inesistenti: {rep['deleted']}")
+            if rep["orphans"]:
+                logger.warning(f"[{venue}] eventi non presenti nel calendario ufficiale ma gestiti dall'utente: {rep['orphans']}")
         except Exception as exc:
-            logger.error(f"Errore inserimento seed {seed_ev.get('title')}: {exc}")
+            logger.error(f"Errore riconciliazione {venue}: {exc}")
 
-    # 2. Verifica sedi coperte da eventuale scraping live aggiuntivo
-    scraped_events_to_sync: List[Dict[str, Any]] = []
-
-    maradona_events = [e for e in football_events if e["venue"] == "Stadio Maradona"]
-    if not maradona_events or force_seed:
-        fallback_applied_venues.append("Stadio Maradona")
-    else:
-        scraped_events_to_sync.extend(maradona_events)
-
-    menti_events = [e for e in football_events if e["venue"] == "Stadio Romeo Menti"]
-    if not menti_events or force_seed:
-        fallback_applied_venues.append("Stadio Romeo Menti")
-    else:
-        scraped_events_to_sync.extend(menti_events)
-
-    pinto_events = [e for e in football_events if e["venue"] == "Stadio Alberto Pinto"]
-    if not pinto_events or force_seed:
-        fallback_applied_venues.append("Stadio Alberto Pinto")
-    else:
-        scraped_events_to_sync.extend(pinto_events)
-
-    if not mostra_events or force_seed:
-        fallback_applied_venues.append("Mostra d'Oltremare")
-    else:
-        scraped_events_to_sync.extend(mostra_events)
-
-    seed_keys = {normalize_event_key(e["title"]) for e in seed_pool}
-    for ev in scraped_events_to_sync:
-        # Evita di sovrascrivere le date certificate del calendario ufficiale 2026/2027
-        if normalize_event_key(ev.get("title", "")) in seed_keys:
-            continue
-        try:
-            saved = insert_or_update_event(ev)
-            saved_records.append(saved)
-            if saved.get("updated_flag"):
-                time_changes_count += 1
-        except Exception as exc:
-            logger.error(f"Errore inserimento evento {ev.get('title')}: {exc}")
-
-    # 3. Bonifica e deduplicazione completa del DB (rimuove doppioni e riallinea date)
-    sanitize_and_deduplicate_db(seed_pool)
+    # Bonifica e deduplicazione (abbinamento per titolo + data)
+    sanitize_and_deduplicate_db(canonical_used)
 
     # Rilevamento avvisi aggiornati da database
     alerts = get_alerts()
@@ -1100,6 +1125,7 @@ def sync_all_events(force_seed: bool = False) -> Dict[str, Any]:
             },
             "fallback_applied_for_venues": fallback_applied_venues,
             "force_seed_used": force_seed,
+            "reconciliation": reconcile_reports,
         },
         "alerts_overview": {
             "total_alerts": alerts.get("total_alerts", 0),

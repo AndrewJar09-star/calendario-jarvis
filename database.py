@@ -13,6 +13,14 @@ MULTI_DATE_SHOW_KEYS = {
     "masaniello",
 }
 
+# Finestra (giorni) entro cui uno stesso titolo con data diversa è considerato
+# lo stesso evento rinviato/anticipato, e non un evento distinto.
+SMALL_RESCHEDULE_DAYS = 3        # inserimenti singoli (insert_or_update_event)
+RESCHEDULE_WINDOW_DAYS = 14      # riconciliazione completa per sede (reconcile_venue_events)
+
+# Sedi gestite automaticamente da scraper/seed
+MANAGED_VENUES = ("Stadio Maradona", "Stadio Romeo Menti", "Stadio Alberto Pinto", "Mostra d'Oltremare")
+
 BOGUS_VOICE_TITLES = {
     "generico",
     "stadio con convocazione",
@@ -110,6 +118,14 @@ def parse_datetime(dt_str: str) -> datetime:
         return datetime.fromisoformat(dt_str)
     except Exception as exc:
         raise ValueError(f"Formato data non valido: '{dt_str}'. Utilizzare 'YYYY-MM-DD HH:MM:SS'") from exc
+
+
+def _days_between(a: Optional[str], b: Optional[str]) -> Optional[int]:
+    """Distanza assoluta in giorni tra due date-stringa (None se non parsabili)."""
+    try:
+        return abs((parse_datetime(a).date() - parse_datetime(b).date()).days)
+    except Exception:
+        return None
 
 
 def calculate_call_time(category: str, event_start_str: str, custom_call_time: Optional[str] = None) -> str:
@@ -382,21 +398,25 @@ def insert_or_update_event(event_data: Dict[str, Any], force_insert: bool = Fals
                     existing = cand
 
             if not existing and title:
+                # Abbinamento per (titolo normalizzato + DATA), mai solo per titolo:
+                # la stessa sfida può ripetersi nella stagione (es. Napoli vs Fiorentina
+                # in Coppa Italia e in Serie A) e non deve collidere/sovrascriversi.
                 cursor.execute("SELECT * FROM events ORDER BY id ASC")
-                all_rows = cursor.fetchall()
-                for r in all_rows:
-                    r_key = normalize_event_key(r["title"])
-                    if r_key != norm_key:
-                        continue
-                    if norm_key in MULTI_DATE_SHOW_KEYS:
-                        if (r["event_start"] or "")[:10] == target_date_str:
-                            existing = r
-                            event_id = r["id"]
-                            break
-                    else:
-                        existing = r
-                        event_id = r["id"]
-                        break
+                same_key = [r for r in cursor.fetchall() if normalize_event_key(r["title"]) == norm_key]
+                exact = [r for r in same_key if (r["event_start"] or "")[:10] == target_date_str]
+                if exact:
+                    existing = exact[0]
+                elif norm_key not in MULTI_DATE_SHOW_KEYS and target_date_str:
+                    # Possibile rinvio/anticipo: stesso titolo e stessa sede entro pochi giorni
+                    best_delta = None
+                    for r in same_key:
+                        if (r["venue"] or "").strip() != venue:
+                            continue
+                        delta = _days_between(r["event_start"], event_start)
+                        if delta is not None and delta <= SMALL_RESCHEDULE_DAYS and (best_delta is None or delta < best_delta):
+                            existing, best_delta = r, delta
+                if existing:
+                    event_id = existing["id"]
 
         if existing:
             # Preserva lo stato utente se diverso dal default 'Da confermare'
@@ -546,16 +566,13 @@ def sanitize_and_deduplicate_db(canonical_seeds: Optional[List[Dict[str, Any]]] 
         if not rows:
             return 0
 
-        single_seed_map: Dict[str, Dict[str, Any]] = {}
-        multi_seed_map: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        single_seed_map: Dict[Tuple[str, str], Dict[str, Any]] = {}
         if canonical_seeds:
             for s in canonical_seeds:
                 k = normalize_event_key(s.get("title", ""))
                 d = (s.get("event_start") or "")[:10]
-                if k in MULTI_DATE_SHOW_KEYS:
-                    multi_seed_map[(k, d)] = s
-                else:
-                    single_seed_map[k] = s
+                # Chiave SEMPRE (titolo, data): evita collisioni tra partite omonime
+                single_seed_map[(k, d)] = s
 
         groups: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
         ids_to_delete: List[int] = []
@@ -568,12 +585,7 @@ def sanitize_and_deduplicate_db(canonical_seeds: Optional[List[Dict[str, Any]]] 
                 continue
 
             d = (r.get("event_start") or "")[:10]
-            if k in MULTI_DATE_SHOW_KEYS:
-                g_key = (k, d)
-            elif k in single_seed_map:
-                g_key = (k, "")
-            else:
-                g_key = (k, d)
+            g_key = (k, d)
             groups.setdefault(g_key, []).append(r)
 
         for g_key, grp in groups.items():
@@ -601,7 +613,7 @@ def sanitize_and_deduplicate_db(canonical_seeds: Optional[List[Dict[str, Any]]] 
                 best_status = "Lavoro io"
 
             k, d = g_key
-            seed_ref = multi_seed_map.get((k, d)) if k in MULTI_DATE_SHOW_KEYS else single_seed_map.get(k)
+            seed_ref = single_seed_map.get((k, d))
 
             if seed_ref:
                 new_title = clean_display_title(seed_ref["title"])
@@ -647,3 +659,157 @@ def sanitize_and_deduplicate_db(canonical_seeds: Optional[List[Dict[str, Any]]] 
         conn.close()
 
 
+
+
+def _is_user_owned(row: Dict[str, Any]) -> bool:
+    """True se l'utente ha già interagito con l'evento (stato, compenso o inserimento vocale/manuale)."""
+    status = (row.get("status") or "").strip()
+    notes = row.get("notes") or ""
+    return (
+        (status and status != "Da confermare")
+        or row.get("earnings") is not None
+        or "J.A.R.V.I.S." in notes
+    )
+
+
+def reconcile_venue_events(
+    venue: str,
+    official_events: List[Dict[str, Any]],
+    since: str,
+    flag_changes: bool = True,
+) -> Dict[str, Any]:
+    """
+    Allinea il DB al calendario ufficiale di UNA sede a partire da `since` (YYYY-MM-DD...).
+
+    1. Abbina gli eventi per (titolo normalizzato, data) esatti.
+    2. Abbina i rimanenti con stesso titolo entro RESCHEDULE_WINDOW_DAYS (rinvii/anticipi).
+    3. Inserisce gli eventi ufficiali non presenti nel DB.
+    4. Elimina gli eventi della sede che NON esistono nel calendario ufficiale
+       (es. partite inventate o di stagioni passate). Gli eventi su cui l'utente ha
+       già agito (stato/compenso/inserimento vocale) NON vengono mai eliminati:
+       sono restituiti in `orphans` per verifica manuale.
+    """
+    init_db()
+    conn = get_db_connection()
+    report: Dict[str, Any] = {"venue": venue, "updated": [], "inserted": [], "deleted": [], "orphans": []}
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM events WHERE venue = ? AND event_start >= ? ORDER BY event_start ASC, id ASC",
+            (venue, since[:10]),
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            r["_key"] = normalize_event_key(r["title"])
+
+        official = []
+        for ev in official_events:
+            if (ev.get("event_start") or "")[:10] < since[:10]:
+                continue
+            e = dict(ev)
+            e["title"] = clean_display_title(e.get("title") or "")
+            e["_key"] = normalize_event_key(e["title"])
+            official.append(e)
+        official.sort(key=lambda e: e["event_start"])
+
+        matched_rows: set = set()
+        pairs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+        unmatched: List[Dict[str, Any]] = []
+
+        # Pass 1: (titolo, data) esatti
+        for ev in official:
+            hit = next(
+                (r for r in rows if r["id"] not in matched_rows and r["_key"] == ev["_key"]
+                 and r["event_start"][:10] == ev["event_start"][:10]),
+                None,
+            )
+            if hit:
+                matched_rows.add(hit["id"])
+                pairs.append((ev, hit))
+            else:
+                unmatched.append(ev)
+
+        # Pass 2: stesso titolo, data vicina (rinvio/anticipo)
+        still_unmatched = []
+        for ev in unmatched:
+            best, best_delta = None, None
+            if ev["_key"] not in MULTI_DATE_SHOW_KEYS:
+                for r in rows:
+                    if r["id"] in matched_rows or r["_key"] != ev["_key"]:
+                        continue
+                    delta = _days_between(r["event_start"], ev["event_start"])
+                    if delta is not None and delta <= RESCHEDULE_WINDOW_DAYS and (best_delta is None or delta < best_delta):
+                        best, best_delta = r, delta
+            if best:
+                matched_rows.add(best["id"])
+                pairs.append((ev, best))
+            else:
+                still_unmatched.append(ev)
+
+        # Pass 3 (solo CALCIO): stesso stadio e stesso giorno = stessa partita con nome
+        # avversario corretto (in uno stadio si gioca al massimo una partita al giorno).
+        remaining = []
+        for ev in still_unmatched:
+            hit = None
+            if (ev.get("category") or "").upper() == "CALCIO":
+                hit = next(
+                    (r for r in rows if r["id"] not in matched_rows
+                     and (r.get("category") or "").upper() == "CALCIO"
+                     and r["event_start"][:10] == ev["event_start"][:10]),
+                    None,
+                )
+            if hit:
+                matched_rows.add(hit["id"])
+                pairs.append((ev, hit))
+            else:
+                remaining.append(ev)
+        still_unmatched = remaining
+
+        # Aggiornamento eventi abbinati (preserva stato e compensi dell'utente)
+        for ev, r in pairs:
+            category = (ev.get("category") or r.get("category") or "").upper()
+            new_start = ev["event_start"]
+            new_call = calculate_call_time(category, new_start, ev.get("call_time"))
+            changed_time = r["event_start"] != new_start
+            new_flag = 1 if (flag_changes and changed_time) else (r.get("updated_flag") or 0)
+            new_notes = ev.get("notes") or r.get("notes") or ""
+            if (r["title"] != ev["title"] or changed_time or r["call_time"] != new_call
+                    or (r.get("notes") or "") != new_notes or (r.get("updated_flag") or 0) != new_flag):
+                cur.execute(
+                    "UPDATE events SET title=?, category=?, event_start=?, call_time=?, notes=?, updated_flag=? WHERE id=?",
+                    (ev["title"], category, new_start, new_call, new_notes, new_flag, r["id"]),
+                )
+                if normalize_event_key(r["title"]) != ev["_key"] or changed_time:
+                    report["updated"].append(f"{r['event_start']} {r['title']} -> {new_start} {ev['title']}")
+
+        # Inserimento eventi ufficiali mancanti
+        for ev in still_unmatched:
+            category = (ev.get("category") or "").upper()
+            call = calculate_call_time(category, ev["event_start"], ev.get("call_time"))
+            cur.execute(
+                "INSERT INTO events (title, venue, category, event_start, call_time, status, updated_flag, notes, earnings) "
+                "VALUES (?, ?, ?, ?, ?, 'Da confermare', 0, ?, NULL)",
+                (ev["title"], venue, category, ev["event_start"], call, ev.get("notes") or ""),
+            )
+            report["inserted"].append(f"{ev['event_start']} {ev['title']}")
+
+        # Rimozione eventi inesistenti nel calendario ufficiale.
+        # Solo nell'intervallo effettivamente coperto dalla fonte [since, ultimo evento ufficiale]:
+        # se la fonte restituisce un orizzonte parziale, gli eventi oltre non vengono toccati.
+        horizon = max((e["event_start"][:10] for e in official), default=None)
+        for r in rows:
+            if r["id"] in matched_rows:
+                continue
+            if horizon is None or r["event_start"][:10] > horizon:
+                continue
+            label = f"[id {r['id']}] {r['event_start']} {r['title']} ({r.get('status')})"
+            if _is_user_owned(r):
+                report["orphans"].append(label)
+            else:
+                cur.execute("DELETE FROM events WHERE id = ?", (r["id"],))
+                report["deleted"].append(label)
+
+        conn.commit()
+        return report
+    finally:
+        conn.close()

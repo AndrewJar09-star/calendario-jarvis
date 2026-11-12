@@ -58,7 +58,9 @@ async def lifespan(app: FastAPI):
         if count < 70:
             sync_all_events(force_seed=True)
         else:
-            sanitize_and_deduplicate_db(seed_initial_data())
+            # Solo deduplicazione/pulizia: il riallineamento ai calendari ufficiali
+            # avviene in sync_all_events (live con fallback seed).
+            sanitize_and_deduplicate_db()
     except Exception as e:
         print(f"Warning durante sync iniziale: {e}")
 
