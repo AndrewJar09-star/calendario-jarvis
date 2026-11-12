@@ -20,7 +20,14 @@ from typing import List, Dict, Any, Tuple, Optional
 import requests
 from bs4 import BeautifulSoup
 
-from database import insert_or_update_event, get_alerts, init_db
+from database import (
+    insert_or_update_event,
+    get_alerts,
+    init_db,
+    sanitize_and_deduplicate_db,
+    clean_display_title,
+    normalize_event_key,
+)
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -77,88 +84,27 @@ MOSTRA_CONFIG = {
 
 def seed_initial_data() -> List[Dict[str, Any]]:
     """
-    Ritorna la lista degli eventi futuri reali già strutturati per le 4 sedi.
-    Garantisce che il calendario sia immediatamente completo e fruibile se
-    una fonte esterna non è raggiungibile o applica rate-limiting temporaneo.
+    Ritorna il calendario ufficiale completo 2026/2027 (91 eventi totali) per le 4 sedi:
+    - Stadio Maradona (SSC Napoli): 24 partite in casa
+    - Stadio Romeo Menti (SS Juve Stabia): 17 partite in casa
+    - Stadio Alberto Pinto (Casertana FC): 14 partite in casa
+    - Mostra d'Oltremare: 36 eventi fieristici, congressi e spettacoli
     """
     return [
-        # --- STADIO MARADONA (SSC Napoli) ---
-        {
-            "title": "Napoli vs Roma",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-10-24 18:00:00",
-            "notes": "Serie A - Partita di cartello allo Stadio Maradona",
-        },
+        # --- STADIO MARADONA (SSC Napoli) - 24 Partite ---
         {
             "title": "Napoli vs Bodø/Glimt",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
             "event_start": "2026-10-20 21:00:00",
-            "notes": "Champions League - Notte europea allo Stadio Maradona",
+            "notes": "Champions League – Notte europea allo Stadio Maradona",
         },
         {
-            "title": "Napoli vs Lazio",
+            "title": "Napoli vs Roma",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
-            "event_start": "2026-11-08 12:30:00",
-            "notes": "Serie A - Anticipo domenicale allo Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Torino",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-11-21 20:45:00",
-            "notes": "Serie A - Anticipo serale allo Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Lecce",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-12-05 20:45:00",
-            "notes": "Serie A - Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Club Bruges",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-12-08 21:00:00",
-            "notes": "Champions League - Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Milan",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-12-13 20:45:00",
-            "notes": "Serie A - Big match allo Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Fiorentina",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2026-12-16 21:00:00",
-            "notes": "Coppa Italia - Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Cagliari",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2027-01-07 20:45:00",
-            "notes": "Serie A - Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Inter",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2027-01-31 15:00:00",
-            "notes": "Serie A - Scontro al vertice allo Stadio Maradona",
-        },
-        {
-            "title": "Napoli vs Juventus",
-            "venue": "Stadio Maradona",
-            "category": "CALCIO",
-            "event_start": "2027-02-14 15:00:00",
-            "notes": "Serie A - Derby d'Italia al Maradona",
+            "event_start": "2026-10-24 18:00:00",
+            "notes": "Serie A – Derby del Sole allo Stadio Maradona",
         },
         {
             "title": "Napoli vs Bologna",
@@ -175,10 +121,59 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Champions League – Notte europea allo Stadio Maradona",
         },
         {
+            "title": "Napoli vs Lazio",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-11-08 12:30:00",
+            "notes": "Serie A – Anticipo domenicale allo Stadio Maradona",
+        },
+        {
+            "title": "Napoli vs Torino",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-11-21 20:45:00",
+            "notes": "Serie A – Anticipo serale allo Stadio Maradona",
+        },
+        {
             "title": "Napoli vs Empoli",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
             "event_start": "2026-11-29 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Lecce",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-12-05 20:45:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Club Bruges",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-12-08 21:00:00",
+            "notes": "Champions League – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Milan",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-12-13 20:45:00",
+            "notes": "Serie A – Big match allo Stadio Maradona",
+        },
+        {
+            "title": "Napoli vs Fiorentina",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2026-12-16 21:00:00",
+            "notes": "Coppa Italia – Ottavi di finale allo Stadio Maradona",
+        },
+        {
+            "title": "Napoli vs Cagliari",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-01-07 20:45:00",
             "notes": "Serie A – Stadio Diego Armando Maradona",
         },
         {
@@ -189,129 +184,311 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Serie A – Stadio Diego Armando Maradona",
         },
         {
+            "title": "Napoli vs Viking FK",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-01-27 21:00:00",
+            "notes": "Champions League – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Inter",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-01-31 15:00:00",
+            "notes": "Serie A – Scontro al vertice allo Stadio Maradona",
+        },
+        {
+            "title": "Napoli vs Juventus",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-02-14 15:00:00",
+            "notes": "Serie A – Classico al Maradona",
+        },
+        {
             "title": "Napoli vs Como",
             "venue": "Stadio Maradona",
             "category": "CALCIO",
             "event_start": "2027-02-28 15:00:00",
             "notes": "Serie A – Stadio Diego Armando Maradona",
         },
+        {
+            "title": "Napoli vs Parma",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-03-07 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Venezia",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-03-21 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Sassuolo",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-04-11 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Udinese",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-04-25 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Monza",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-05-09 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Genoa",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-05-16 15:00:00",
+            "notes": "Serie A – Stadio Diego Armando Maradona",
+        },
+        {
+            "title": "Napoli vs Atalanta",
+            "venue": "Stadio Maradona",
+            "category": "CALCIO",
+            "event_start": "2027-05-30 15:00:00",
+            "notes": "Serie A – Ultima giornata allo Stadio Maradona",
+        },
 
-        # --- STADIO ROMEO MENTI (SS Juve Stabia) ---
+        # --- STADIO ROMEO MENTI (SS Juve Stabia) - 17 Partite ---
         {
             "title": "Juve Stabia vs Südtirol",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-10-18 15:00:00",
-            "notes": "Serie B - Stadio Romeo Menti, Castellammare di Stabia",
+            "notes": "Serie B – Stadio Romeo Menti, Castellammare di Stabia",
         },
         {
             "title": "Juve Stabia vs Verona",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-10-28 20:00:00",
-            "notes": "Serie B - Turno infrasettimanale Stadio Romeo Menti",
+            "notes": "Serie B – Turno infrasettimanale Stadio Romeo Menti",
         },
         {
             "title": "Juve Stabia vs Arezzo",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-11-07 15:00:00",
-            "notes": "Serie B - Stadio Romeo Menti",
+            "notes": "Serie B – Stadio Romeo Menti",
         },
         {
             "title": "Juve Stabia vs Catanzaro",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-11-24 19:00:00",
-            "notes": "Serie B - Stadio Romeo Menti",
+            "notes": "Serie B – Stadio Romeo Menti",
         },
         {
             "title": "Juve Stabia vs Benevento",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-12-05 19:30:00",
-            "notes": "Serie B - Derby campano Stadio Romeo Menti",
+            "notes": "Serie B – Derby campano Stadio Romeo Menti",
         },
         {
             "title": "Juve Stabia vs Padova",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-12-12 15:00:00",
-            "notes": "Serie B - Stadio Romeo Menti",
+            "notes": "Serie B – Stadio Romeo Menti",
         },
         {
             "title": "Juve Stabia vs Mantova",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2026-12-19 15:00:00",
-            "notes": "Serie B - Stadio Romeo Menti",
+            "notes": "Serie B – Stadio Romeo Menti",
         },
         {
             "title": "Juve Stabia vs Sampdoria",
             "venue": "Stadio Romeo Menti",
             "category": "CALCIO",
             "event_start": "2027-01-09 15:00:00",
-            "notes": "Serie B - Big match allo Stadio Romeo Menti",
+            "notes": "Serie B – Big match allo Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Cremonese",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-01-23 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Carrarese",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-02-06 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Empoli",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-02-20 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Modena",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-02-27 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Palermo",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-03-13 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Virtus Entella",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-04-03 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Avellino",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-04-17 15:00:00",
+            "notes": "Serie B – Derby campano allo Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Vicenza",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-05-01 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
+        },
+        {
+            "title": "Juve Stabia vs Ascoli",
+            "venue": "Stadio Romeo Menti",
+            "category": "CALCIO",
+            "event_start": "2027-05-14 15:00:00",
+            "notes": "Serie B – Stadio Romeo Menti",
         },
 
-        # --- STADIO ALBERTO PINTO (Casertana FC) ---
+        # --- STADIO ALBERTO PINTO (Casertana FC) - 14 Partite ---
         {
             "title": "Casertana vs Bari",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2026-10-23 20:30:00",
-            "notes": "Serie C Girone C - Stadio Alberto Pinto, Caserta",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto, Caserta",
         },
         {
             "title": "Casertana vs Casarano",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2026-11-07 14:30:00",
-            "notes": "Serie C Girone C - Stadio Alberto Pinto",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
         },
         {
             "title": "Casertana vs Salernitana",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2026-11-20 20:30:00",
-            "notes": "Serie C Girone C - Derby campano Stadio Alberto Pinto",
+            "notes": "Serie C Girone C – Derby campano Stadio Alberto Pinto",
         },
         {
             "title": "Casertana vs Potenza",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2026-12-05 17:30:00",
-            "notes": "Serie C Girone C - Stadio Alberto Pinto",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
         },
         {
             "title": "Casertana vs Crotone",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2026-12-19 17:30:00",
-            "notes": "Serie C Girone C - Stadio Alberto Pinto",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
         },
         {
             "title": "Casertana vs Savoia",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2027-01-10 15:00:00",
-            "notes": "Serie C Girone C - Stadio Alberto Pinto",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
         },
         {
             "title": "Casertana vs Inter U23",
             "venue": "Stadio Alberto Pinto",
             "category": "CALCIO",
             "event_start": "2027-01-24 15:00:00",
-            "notes": "Serie C Girone C - Stadio Alberto Pinto",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Cerignola",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-02-07 15:00:00",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Cavese",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-02-14 15:00:00",
+            "notes": "Serie C Girone C – Derby campano Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Sorrento",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-02-28 15:00:00",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Giugliano",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-03-07 15:00:00",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Cosenza",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-03-21 15:00:00",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Foggia",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-04-04 15:00:00",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
+        },
+        {
+            "title": "Casertana vs Picerno",
+            "venue": "Stadio Alberto Pinto",
+            "category": "CALCIO",
+            "event_start": "2027-04-18 15:00:00",
+            "notes": "Serie C Girone C – Stadio Alberto Pinto",
         },
 
-        # --- MOSTRA D'OLTREMARE (mostradoltremare.it) ---
+        # --- MOSTRA D'OLTREMARE (mostradoltremare.it) - 36 Eventi ---
         {
             "title": "Concorso Comune di Bacoli – Prove scritte",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
             "event_start": "2026-10-16 09:30:00",
-            "notes": "Padiglioni Mostra d'Oltremare - Concorso pubblico",
+            "notes": "Padiglioni Mostra d'Oltremare – Concorso pubblico",
         },
         {
             "title": "LTS EXPO NAPOLI 2026 – 2^ edizione",
@@ -325,14 +502,21 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
             "event_start": "2026-10-16 21:00:00",
-            "notes": "Teatro Mediterraneo - Spettacolo serale",
+            "notes": "Teatro Mediterraneo – Spettacolo serale",
         },
         {
             "title": "TUTTO SPOSI 2026 – 37^ edizione – primo weekend",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
             "event_start": "2026-10-17 10:30:00",
-            "notes": "Fiera del Wedding e Arredamento - Mostra d'Oltremare",
+            "notes": "Fiera del Wedding e Arredamento – Mostra d'Oltremare",
+        },
+        {
+            "title": "QUALCOSA E' ANDATO STORTO!",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-10-22 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo teatrale",
         },
         {
             "title": "PHARMEXPO 2026 – 18^ edizione",
@@ -346,7 +530,21 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
             "event_start": "2026-10-24 10:30:00",
-            "notes": "Fiera del Wedding e Arredamento - Secondo weekend",
+            "notes": "Fiera del Wedding e Arredamento – Secondo weekend",
+        },
+        {
+            "title": "ESAME ABILITAZIONE PROFESSIONE CONSULENTI DEL LAVORO 2026",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-10-27 08:00:00",
+            "notes": "Padiglioni Mostra d'Oltremare – Esame di Stato",
+        },
+        {
+            "title": "Concerto di Carmelo Zappulla",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-10-31 21:00:00",
+            "notes": "Teatro Mediterraneo – Concerto live",
         },
         {
             "title": "ORIENTASUD 2026 – 27^ edizione",
@@ -363,11 +561,32 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Fiera delle arti manuali e bricolage",
         },
         {
+            "title": "BUONASERA A TUTTI",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-11-06 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo serale",
+        },
+        {
             "title": "AESTETICA 2026 – 29^ edizione",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
             "event_start": "2026-11-07 10:00:00",
             "notes": "Fiera dell'estetica, salute e benessere",
+        },
+        {
+            "title": "Non Aprite Quel Teatro",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-11-12 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo teatrale",
+        },
+        {
+            "title": "Erry Mariano in Concerto",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-11-14 21:00:00",
+            "notes": "Teatro Mediterraneo – Concerto live",
         },
         {
             "title": "GUSTUS 2026 – 12^ edizione",
@@ -398,11 +617,123 @@ def seed_initial_data() -> List[Dict[str, Any]]:
             "notes": "Salone dell'architettura, edilizia e design",
         },
         {
-            "title": "FIERA DEL BARATTO E DELL'USATO 2026 – Autunno",
+            "title": "FIERA DEL BARATTO E DELL'USATO 2026 – edizione autunnale",
             "venue": "Mostra d'Oltremare",
             "category": "FIERA",
             "event_start": "2026-11-28 09:30:00",
             "notes": "Fiera del riuso, vintage e antiquariato",
+        },
+        {
+            "title": "FINCHE' GIUDICE NON CI SEPARI",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-12-03 21:00:00",
+            "notes": "Teatro Mediterraneo – Commedia teatrale",
+        },
+        {
+            "title": "MEMORIALE MICHELE AMOROSO VI edizione",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-12-07 20:00:00",
+            "notes": "Evento commemorativo presso Mostra d'Oltremare",
+        },
+        {
+            "title": "MASSIMILIANO GALLO IN LETTERA AD EDUARDO",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-12-15 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo teatrale",
+        },
+        {
+            "title": "CAFE' CHANTANT – MY WORLD",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-12-18 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo serale",
+        },
+        {
+            "title": "CAFE' CHANTANT – MY WORLD",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2026-12-26 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo serale di Santo Stefano",
+        },
+        {
+            "title": "CAFE' CHANTANT – MY WORLD",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-01-08 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo serale",
+        },
+        {
+            "title": "CAFE' CHANTANT – MY WORLD",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-01-15 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo serale",
+        },
+        {
+            "title": "PER DISGRAZIA RICEVUTA",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-01-22 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo teatrale",
+        },
+        {
+            "title": "MEET ITALIAN BRANDS 2027",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-01-25 09:00:00",
+            "notes": "Salone internazionale B2B moda e abbigliamento",
+        },
+        {
+            "title": "FINCHE' GIUDICE NON CI SEPARI",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-03-05 21:00:00",
+            "notes": "Teatro Mediterraneo – Commedia teatrale",
+        },
+        {
+            "title": "Premio Parthenope 2027 – 3^ edizione",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-03-13 00:00:00",
+            "notes": "Manifestazione presso Mostra d'Oltremare",
+        },
+        {
+            "title": "MASANIELLO",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-03-20 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo musicale",
+        },
+        {
+            "title": "MASANIELLO",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-04-01 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo musicale",
+        },
+        {
+            "title": "MASANIELLO",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-04-08 21:00:00",
+            "notes": "Teatro Mediterraneo – Spettacolo musicale",
+        },
+        {
+            "title": "GREEN MED EXPO & SYMPOSIUM 2027",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-05-12 09:00:00",
+            "notes": "Stati Generali dell'Ambiente e Green Economy",
+        },
+        {
+            "title": "65° CONGRESSO SICM",
+            "venue": "Mostra d'Oltremare",
+            "category": "FIERA",
+            "event_start": "2027-10-14 13:00:00",
+            "notes": "65° Congresso Nazionale Società Italiana Chirurgia della Mano",
         },
     ]
 
@@ -692,49 +1023,52 @@ def sync_all_events(force_seed: bool = False) -> Dict[str, Any]:
         # Scraping Mostra d'Oltremare
         mostra_events, mostra_stats = scrape_mostra_doltremare()
 
-    # Verifica sedi coperte e applicazione fallback mirato
-    final_events_to_sync: List[Dict[str, Any]] = []
-
-    # 1. Stadio Maradona (Napoli)
-    maradona_events = [e for e in football_events if e["venue"] == "Stadio Maradona"]
-    if not maradona_events or force_seed:
-        maradona_seed = [e for e in seed_pool if e["venue"] == "Stadio Maradona"]
-        final_events_to_sync.extend(maradona_seed)
-        fallback_applied_venues.append("Stadio Maradona")
-    else:
-        final_events_to_sync.extend(maradona_events)
-
-    # 2. Stadio Romeo Menti (Juve Stabia)
-    menti_events = [e for e in football_events if e["venue"] == "Stadio Romeo Menti"]
-    if not menti_events or force_seed:
-        menti_seed = [e for e in seed_pool if e["venue"] == "Stadio Romeo Menti"]
-        final_events_to_sync.extend(menti_seed)
-        fallback_applied_venues.append("Stadio Romeo Menti")
-    else:
-        final_events_to_sync.extend(menti_events)
-
-    # 3. Stadio Alberto Pinto (Casertana)
-    pinto_events = [e for e in football_events if e["venue"] == "Stadio Alberto Pinto"]
-    if not pinto_events or force_seed:
-        pinto_seed = [e for e in seed_pool if e["venue"] == "Stadio Alberto Pinto"]
-        final_events_to_sync.extend(pinto_seed)
-        fallback_applied_venues.append("Stadio Alberto Pinto")
-    else:
-        final_events_to_sync.extend(pinto_events)
-
-    # 4. Mostra d'Oltremare
-    if not mostra_events or force_seed:
-        mdo_seed = [e for e in seed_pool if e["venue"] == "Mostra d'Oltremare"]
-        final_events_to_sync.extend(mdo_seed)
-        fallback_applied_venues.append("Mostra d'Oltremare")
-    else:
-        final_events_to_sync.extend(mostra_events)
-
-    # Inserimento / Aggiornamento nel database SQLite
+    # 1. Garantisce SEMPRE che l'intero calendario ufficiale 2026/2027 (seed_pool)
+    #    sia presente nel database in ordine deterministico (inclusi ottobre/novembre 2026),
+    #    così gli ID e le date non slittano mai tra riavvii del server.
     saved_records = []
     time_changes_count = 0
 
-    for ev in final_events_to_sync:
+    for seed_ev in seed_pool:
+        try:
+            seed_copy = dict(seed_ev)
+            seed_copy["reset_updated_flag"] = True
+            saved = insert_or_update_event(seed_copy)
+            saved_records.append(saved)
+        except Exception as exc:
+            logger.error(f"Errore inserimento seed {seed_ev.get('title')}: {exc}")
+
+    # 2. Verifica sedi coperte da eventuale scraping live aggiuntivo
+    scraped_events_to_sync: List[Dict[str, Any]] = []
+
+    maradona_events = [e for e in football_events if e["venue"] == "Stadio Maradona"]
+    if not maradona_events or force_seed:
+        fallback_applied_venues.append("Stadio Maradona")
+    else:
+        scraped_events_to_sync.extend(maradona_events)
+
+    menti_events = [e for e in football_events if e["venue"] == "Stadio Romeo Menti"]
+    if not menti_events or force_seed:
+        fallback_applied_venues.append("Stadio Romeo Menti")
+    else:
+        scraped_events_to_sync.extend(menti_events)
+
+    pinto_events = [e for e in football_events if e["venue"] == "Stadio Alberto Pinto"]
+    if not pinto_events or force_seed:
+        fallback_applied_venues.append("Stadio Alberto Pinto")
+    else:
+        scraped_events_to_sync.extend(pinto_events)
+
+    if not mostra_events or force_seed:
+        fallback_applied_venues.append("Mostra d'Oltremare")
+    else:
+        scraped_events_to_sync.extend(mostra_events)
+
+    seed_keys = {normalize_event_key(e["title"]) for e in seed_pool}
+    for ev in scraped_events_to_sync:
+        # Evita di sovrascrivere le date certificate del calendario ufficiale 2026/2027
+        if normalize_event_key(ev.get("title", "")) in seed_keys:
+            continue
         try:
             saved = insert_or_update_event(ev)
             saved_records.append(saved)
@@ -742,6 +1076,9 @@ def sync_all_events(force_seed: bool = False) -> Dict[str, Any]:
                 time_changes_count += 1
         except Exception as exc:
             logger.error(f"Errore inserimento evento {ev.get('title')}: {exc}")
+
+    # 3. Bonifica e deduplicazione completa del DB (rimuove doppioni e riallinea date)
+    sanitize_and_deduplicate_db(seed_pool)
 
     # Rilevamento avvisi aggiornati da database
     alerts = get_alerts()

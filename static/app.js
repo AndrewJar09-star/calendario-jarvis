@@ -258,50 +258,167 @@ function getHudEventStyle(ev) {
 // ─── Local-First Smartphone Storage Engine ──────────────────────────
 const LOCAL_STORAGE_EVENTS_KEY = 'steward_events_local_v2';
 
+// ─── Normalizzazione Titoli & Riparazione Collisioni ────────────────
+const MULTI_DATE_SHOW_KEYS = new Set([
+  'cafe chantant my world',
+  'finche giudice non ci separi',
+  'masaniello'
+]);
+
+const BOGUS_VOICE_TITLES = new Set([
+  'generico',
+  'stadio con convocazione',
+  'imposta consegna pizze',
+  'disegna ore',
+  'cosa c e in',
+  'prossimo a google calendar',
+  'quanti turni ho in'
+]);
+
+function cleanDisplayTitle(title) {
+  if (!title) return '';
+  let t = String(title).trim();
+  const replacements = [
+    ['ÈEmpoli', 'Empoli'],
+    ['Virtus Èntella', 'Virtus Entella'],
+    ['Inter U2°3', 'Inter U23'],
+    ['2°7^', '27^'],
+    ['2°9^', '29^'],
+    ['2°°', '2°'],
+    ['65°°', '65°'],
+    ['ÈEErry', 'Erry'],
+    ["QUALCOSA È’ ANDATO STORTO!", "QUALCOSA E' ANDATO STORTO!"],
+    ["QUALCOSA E’ ANDATO STORTO!", "QUALCOSA E' ANDATO STORTO!"],
+    ["FINCHÈ’ GIUDICÈ NON CI SÈPARI", "FINCHE' GIUDICE NON CI SEPARI"],
+    ["FINCHE’ GIUDICE NON CI SEPARI", "FINCHE' GIUDICE NON CI SEPARI"],
+    ["CAFÈ’ CHANTANT MY WORLD", "CAFE' CHANTANT – MY WORLD"],
+    ["CAFE’ CHANTANT – MY WORLD", "CAFE' CHANTANT – MY WORLD"],
+    ["CAFÈ’ CHANTANT", "CAFE' CHANTANT"],
+    ["CAFE’ CHANTANT", "CAFE' CHANTANT"],
+    ['’', "'"],
+    ['‘', "'"]
+  ];
+  for (const [oldS, newS] of replacements) {
+    t = t.split(oldS).join(newS);
+  }
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+function normalizeEventKey(title) {
+  let t = cleanDisplayTitle(title);
+  t = t.replace(/ø/g, 'o').replace(/Ø/g, 'o');
+  t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  t = t.toLowerCase();
+  t = t.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (t.startsWith('fiera del baratto e dell usato 2026')) {
+    return 'fiera del baratto e dell usato 2026';
+  }
+  if (t.startsWith('padelness e sport 2026')) {
+    return 'padelness e sport 2026';
+  }
+  return t;
+}
+
 function getDefaultSeedEvents() {
   return [
-    // SSC Napoli (Stadio Maradona)
-    { id: 101, title: "Napoli vs Roma", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-24 18:00:00", call_time: "2026-10-24 14:00:00", notes: "Serie A - Partita di cartello allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 102, title: "Napoli vs Bodø/Glimt", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-20 21:00:00", call_time: "2026-10-20 17:00:00", notes: "Champions League - Notte europea allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 103, title: "Napoli vs Lazio", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-08 12:30:00", call_time: "2026-11-08 08:30:00", notes: "Serie A - Anticipo domenicale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 104, title: "Napoli vs Torino", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-21 20:45:00", call_time: "2026-11-21 16:45:00", notes: "Serie A - Anticipo serale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 105, title: "Napoli vs Lecce", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-05 20:45:00", call_time: "2026-12-05 16:45:00", notes: "Serie A - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 106, title: "Napoli vs Club Bruges", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-08 21:00:00", call_time: "2026-12-08 17:00:00", notes: "Champions League - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 107, title: "Napoli vs Milan", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-13 20:45:00", call_time: "2026-12-13 16:45:00", notes: "Serie A - Big match allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 108, title: "Napoli vs Fiorentina", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-16 21:00:00", call_time: "2026-12-16 17:00:00", notes: "Coppa Italia - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 109, title: "Napoli vs Cagliari", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-07 20:45:00", call_time: "2027-01-07 16:45:00", notes: "Serie A - Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 110, title: "Napoli vs Inter", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-31 15:00:00", call_time: "2027-01-31 11:00:00", notes: "Serie A - Scontro al vertice allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 111, title: "Napoli vs Juventus", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-02-14 15:00:00", call_time: "2027-02-14 11:00:00", notes: "Serie A - Derby d'Italia al Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 112, title: "Napoli vs Bologna", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-01 18:00:00", call_time: "2026-11-01 14:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 113, title: "Napoli vs Feyenoord", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-04 21:00:00", call_time: "2026-11-04 17:00:00", notes: "Champions League – Notte europea", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 114, title: "Napoli vs Empoli", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-29 15:00:00", call_time: "2026-11-29 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    // SS Juve Stabia (Stadio Romeo Menti)
-    { id: 201, title: "Juve Stabia vs Südtirol", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-18 15:00:00", call_time: "2026-10-18 11:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 202, title: "Juve Stabia vs Verona", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-28 20:00:00", call_time: "2026-10-28 16:00:00", notes: "Serie B - Turno infrasettimanale Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 203, title: "Juve Stabia vs Arezzo", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-07 15:00:00", call_time: "2026-11-07 11:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 204, title: "Juve Stabia vs Catanzaro", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-24 19:00:00", call_time: "2026-11-24 15:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 205, title: "Juve Stabia vs Benevento", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-05 19:30:00", call_time: "2026-12-05 15:30:00", notes: "Serie B - Derby campano Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 206, title: "Juve Stabia vs Padova", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-12 15:00:00", call_time: "2026-12-12 11:00:00", notes: "Serie B - Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 207, title: "Juve Stabia vs Sampdoria", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-01-09 15:00:00", call_time: "2027-01-09 11:00:00", notes: "Serie B - Big match allo Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    // Casertana FC (Stadio Alberto Pinto)
-    { id: 301, title: "Casertana vs Bari", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-10-23 20:30:00", call_time: "2026-10-23 16:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto, Caserta", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 302, title: "Casertana vs Casarano", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-07 14:30:00", call_time: "2026-11-07 10:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 303, title: "Casertana vs Salernitana", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-20 20:30:00", call_time: "2026-11-20 16:30:00", notes: "Serie C Girone C - Derby campano", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 304, title: "Casertana vs Potenza", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-05 17:30:00", call_time: "2026-12-05 13:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 305, title: "Casertana vs Crotone", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-19 17:30:00", call_time: "2026-12-19 13:30:00", notes: "Serie C Girone C - Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    // Mostra d'Oltremare (mostradoltremare.it)
-    { id: 401, title: "Concorso Comune di Bacoli – Prove scritte", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 09:30:00", call_time: "2026-10-16 08:30:00", notes: "Padiglioni Mostra d'Oltremare - Concorso pubblico", status: "Da confermare", earnings: 0.0, conflict: false },
+    // SSC Napoli (Stadio Maradona) — 24 Partite
+    { id: 101, title: "Napoli vs Bodø/Glimt", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-20 21:00:00", call_time: "2026-10-20 17:00:00", notes: "Champions League – Notte europea allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 102, title: "Napoli vs Roma", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-24 18:00:00", call_time: "2026-10-24 14:00:00", notes: "Serie A – Derby del Sole allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 103, title: "Napoli vs Bologna", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-01 18:00:00", call_time: "2026-11-01 14:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 104, title: "Napoli vs Feyenoord", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-04 21:00:00", call_time: "2026-11-04 17:00:00", notes: "Champions League – Notte europea allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 105, title: "Napoli vs Lazio", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-08 12:30:00", call_time: "2026-11-08 08:30:00", notes: "Serie A – Anticipo domenicale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 106, title: "Napoli vs Torino", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-21 20:45:00", call_time: "2026-11-21 16:45:00", notes: "Serie A – Anticipo serale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 107, title: "Napoli vs Empoli", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-29 15:00:00", call_time: "2026-11-29 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 108, title: "Napoli vs Lecce", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-05 20:45:00", call_time: "2026-12-05 16:45:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 109, title: "Napoli vs Club Bruges", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-08 21:00:00", call_time: "2026-12-08 17:00:00", notes: "Champions League – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 110, title: "Napoli vs Milan", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-13 20:45:00", call_time: "2026-12-13 16:45:00", notes: "Serie A – Big match allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 111, title: "Napoli vs Fiorentina", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-16 21:00:00", call_time: "2026-12-16 17:00:00", notes: "Coppa Italia – Ottavi di finale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 112, title: "Napoli vs Cagliari", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-07 20:45:00", call_time: "2027-01-07 16:45:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 113, title: "Napoli vs Verona", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-17 15:00:00", call_time: "2027-01-17 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 114, title: "Napoli vs Viking FK", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-27 21:00:00", call_time: "2027-01-27 17:00:00", notes: "Champions League – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 115, title: "Napoli vs Inter", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-31 15:00:00", call_time: "2027-01-31 11:00:00", notes: "Serie A – Scontro al vertice allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 116, title: "Napoli vs Juventus", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-02-14 15:00:00", call_time: "2027-02-14 11:00:00", notes: "Serie A – Classico al Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 117, title: "Napoli vs Como", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-02-28 15:00:00", call_time: "2027-02-28 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 118, title: "Napoli vs Parma", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-03-07 15:00:00", call_time: "2027-03-07 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 119, title: "Napoli vs Venezia", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-03-21 15:00:00", call_time: "2027-03-21 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 120, title: "Napoli vs Sassuolo", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-04-11 15:00:00", call_time: "2027-04-11 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 121, title: "Napoli vs Udinese", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-04-25 15:00:00", call_time: "2027-04-25 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 122, title: "Napoli vs Monza", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-05-09 15:00:00", call_time: "2027-05-09 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 123, title: "Napoli vs Genoa", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-05-16 15:00:00", call_time: "2027-05-16 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 124, title: "Napoli vs Atalanta", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-05-30 15:00:00", call_time: "2027-05-30 11:00:00", notes: "Serie A – Ultima giornata allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+
+    // SS Juve Stabia (Stadio Romeo Menti) — 17 Partite
+    { id: 201, title: "Juve Stabia vs Südtirol", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-18 15:00:00", call_time: "2026-10-18 11:00:00", notes: "Serie B – Stadio Romeo Menti, Castellammare di Stabia", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 202, title: "Juve Stabia vs Verona", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-28 20:00:00", call_time: "2026-10-28 16:00:00", notes: "Serie B – Turno infrasettimanale Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 203, title: "Juve Stabia vs Arezzo", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-07 15:00:00", call_time: "2026-11-07 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 204, title: "Juve Stabia vs Catanzaro", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-24 19:00:00", call_time: "2026-11-24 15:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 205, title: "Juve Stabia vs Benevento", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-05 19:30:00", call_time: "2026-12-05 15:30:00", notes: "Serie B – Derby campano Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 206, title: "Juve Stabia vs Padova", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-12 15:00:00", call_time: "2026-12-12 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 207, title: "Juve Stabia vs Mantova", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-19 15:00:00", call_time: "2026-12-19 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 208, title: "Juve Stabia vs Sampdoria", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-01-09 15:00:00", call_time: "2027-01-09 11:00:00", notes: "Serie B – Big match allo Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 209, title: "Juve Stabia vs Cremonese", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-01-23 15:00:00", call_time: "2027-01-23 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 210, title: "Juve Stabia vs Carrarese", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-02-06 15:00:00", call_time: "2027-02-06 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 211, title: "Juve Stabia vs Empoli", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-02-20 15:00:00", call_time: "2027-02-20 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 212, title: "Juve Stabia vs Modena", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-02-27 15:00:00", call_time: "2027-02-27 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 213, title: "Juve Stabia vs Palermo", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-03-13 15:00:00", call_time: "2027-03-13 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 214, title: "Juve Stabia vs Virtus Entella", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-04-03 15:00:00", call_time: "2027-04-03 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 215, title: "Juve Stabia vs Avellino", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-04-17 15:00:00", call_time: "2027-04-17 11:00:00", notes: "Serie B – Derby campano allo Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 216, title: "Juve Stabia vs Vicenza", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-05-01 15:00:00", call_time: "2027-05-01 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 217, title: "Juve Stabia vs Ascoli", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-05-14 15:00:00", call_time: "2027-05-14 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+
+    // Casertana FC (Stadio Alberto Pinto) — 14 Partite
+    { id: 301, title: "Casertana vs Bari", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-10-23 20:30:00", call_time: "2026-10-23 16:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto, Caserta", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 302, title: "Casertana vs Casarano", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-07 14:30:00", call_time: "2026-11-07 10:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 303, title: "Casertana vs Salernitana", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-20 20:30:00", call_time: "2026-11-20 16:30:00", notes: "Serie C Girone C – Derby campano Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 304, title: "Casertana vs Potenza", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-05 17:30:00", call_time: "2026-12-05 13:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 305, title: "Casertana vs Crotone", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-19 17:30:00", call_time: "2026-12-19 13:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 306, title: "Casertana vs Savoia", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-01-10 15:00:00", call_time: "2027-01-10 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 307, title: "Casertana vs Inter U23", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-01-24 15:00:00", call_time: "2027-01-24 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 308, title: "Casertana vs Cerignola", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-02-07 15:00:00", call_time: "2027-02-07 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 309, title: "Casertana vs Cavese", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-02-14 15:00:00", call_time: "2027-02-14 11:00:00", notes: "Serie C Girone C – Derby campano Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 310, title: "Casertana vs Sorrento", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-02-28 15:00:00", call_time: "2027-02-28 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 311, title: "Casertana vs Giugliano", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-03-07 15:00:00", call_time: "2027-03-07 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 312, title: "Casertana vs Cosenza", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-03-21 15:00:00", call_time: "2027-03-21 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 313, title: "Casertana vs Foggia", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-04-04 15:00:00", call_time: "2027-04-04 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 314, title: "Casertana vs Picerno", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-04-18 15:00:00", call_time: "2027-04-18 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+
+    // Mostra d'Oltremare (mostradoltremare.it) — 36 Eventi
+    { id: 401, title: "Concorso Comune di Bacoli – Prove scritte", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 09:30:00", call_time: "2026-10-16 08:30:00", notes: "Padiglioni Mostra d'Oltremare – Concorso pubblico", status: "Da confermare", earnings: 0.0, conflict: false },
     { id: 402, title: "LTS EXPO NAPOLI 2026 – 2^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 10:00:00", call_time: "2026-10-16 08:30:00", notes: "Esposizione fieristica presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 403, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 21:00:00", call_time: "2026-10-16 08:30:00", notes: "Teatro Mediterraneo - Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 404, title: "TUTTO SPOSI 2026 – 37^ edizione – primo weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-17 10:30:00", call_time: "2026-10-17 08:30:00", notes: "Fiera del Wedding e Arredamento", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 405, title: "PHARMEXPO 2026 – 18^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-23 10:00:00", call_time: "2026-10-23 08:30:00", notes: "Salone dell'industria farmaceutica del Mediterraneo", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 406, title: "TUTTO SPOSI 2026 – 37^ edizione – 2° weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-24 10:30:00", call_time: "2026-10-24 08:30:00", notes: "Fiera del Wedding e Arredamento - Secondo weekend", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 407, title: "ORIENTASUD 2026 – 27^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-04 08:00:00", call_time: "2026-11-04 08:00:00", notes: "Salone dell'orientamento universitario e professionale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 408, title: "CREATTIVA 2026 – 15^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-05 10:00:00", call_time: "2026-11-05 08:30:00", notes: "Fiera delle arti manuali e bricolage", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 409, title: "AESTETICA 2026 – 29^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-07 10:00:00", call_time: "2026-11-07 08:30:00", notes: "Fiera dell'estetica, salute e benessere", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 410, title: "GUSTUS 2026 – 12^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-15 10:00:00", call_time: "2026-11-15 08:30:00", notes: "Expo dei sapori mediterranei e agroalimentare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 411, title: "PADELNESS e SPORT 2026", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-20 10:00:00", call_time: "2026-11-20 08:30:00", notes: "Salone dello sport e del padel", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 412, title: "ARKEDA 2026 – 13^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-27 10:00:00", call_time: "2026-11-27 08:30:00", notes: "Salone dell'architettura e del design", status: "Da confermare", earnings: 0.0, conflict: false }
+    { id: 403, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 21:00:00", call_time: "2026-10-16 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 404, title: "TUTTO SPOSI 2026 – 37^ edizione – primo weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-17 10:30:00", call_time: "2026-10-17 08:30:00", notes: "Fiera del Wedding e Arredamento – Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 405, title: "QUALCOSA E' ANDATO STORTO!", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-22 21:00:00", call_time: "2026-10-22 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 406, title: "PHARMEXPO 2026 – 18^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-23 10:00:00", call_time: "2026-10-23 08:30:00", notes: "Salone dell'industria farmaceutica del Mediterraneo", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 407, title: "TUTTO SPOSI 2026 – 37^ edizione – 2° weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-24 10:30:00", call_time: "2026-10-24 08:30:00", notes: "Fiera del Wedding e Arredamento – Secondo weekend", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 408, title: "ESAME ABILITAZIONE PROFESSIONE CONSULENTI DEL LAVORO 2026", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-27 08:00:00", call_time: "2026-10-27 08:30:00", notes: "Padiglioni Mostra d'Oltremare – Esame di Stato", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 409, title: "Concerto di Carmelo Zappulla", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-31 21:00:00", call_time: "2026-10-31 08:30:00", notes: "Teatro Mediterraneo – Concerto live", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 410, title: "ORIENTASUD 2026 – 27^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-04 08:00:00", call_time: "2026-11-04 08:30:00", notes: "Salone dell'orientamento universitario e professionale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 411, title: "CREATTIVA 2026 – 15^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-05 10:00:00", call_time: "2026-11-05 08:30:00", notes: "Fiera delle arti manuali e bricolage", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 412, title: "BUONASERA A TUTTI", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-06 21:00:00", call_time: "2026-11-06 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 413, title: "AESTETICA 2026 – 29^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-07 10:00:00", call_time: "2026-11-07 08:30:00", notes: "Fiera dell'estetica, salute e benessere", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 414, title: "Non Aprite Quel Teatro", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-12 21:00:00", call_time: "2026-11-12 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 415, title: "Erry Mariano in Concerto", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-14 21:00:00", call_time: "2026-11-14 08:30:00", notes: "Teatro Mediterraneo – Concerto live", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 416, title: "GUSTUS 2026 – 12^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-15 10:00:00", call_time: "2026-11-15 08:30:00", notes: "Expo dei sapori mediterranei e agroalimentare professionale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 417, title: "PADELNESS e SPORT 2026 – 3^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-20 10:00:00", call_time: "2026-11-20 08:30:00", notes: "Salone dello sport e del padel alla Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 418, title: "SALONE DELLO STUDENTE 2026", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-25 09:00:00", call_time: "2026-11-25 08:30:00", notes: "Manifestazione di orientamento accademico", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 419, title: "ARKEDA 2026 – 13^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-27 09:30:00", call_time: "2026-11-27 08:30:00", notes: "Salone dell'architettura, edilizia e design", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 420, title: "FIERA DEL BARATTO E DELL'USATO 2026 – edizione autunnale", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-28 09:30:00", call_time: "2026-11-28 08:30:00", notes: "Fiera del riuso, vintage e antiquariato", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 421, title: "FINCHE' GIUDICE NON CI SEPARI", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-03 21:00:00", call_time: "2026-12-03 08:30:00", notes: "Teatro Mediterraneo – Commedia teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 422, title: "MEMORIALE MICHELE AMOROSO VI edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-07 20:00:00", call_time: "2026-12-07 08:30:00", notes: "Evento commemorativo presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 423, title: "MASSIMILIANO GALLO IN LETTERA AD EDUARDO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-15 21:00:00", call_time: "2026-12-15 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 424, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-18 21:00:00", call_time: "2026-12-18 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 425, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-26 21:00:00", call_time: "2026-12-26 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale di Santo Stefano", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 426, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-08 21:00:00", call_time: "2027-01-08 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 427, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-15 21:00:00", call_time: "2027-01-15 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 428, title: "PER DISGRAZIA RICEVUTA", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-22 21:00:00", call_time: "2027-01-22 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 429, title: "MEET ITALIAN BRANDS 2027", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-25 09:00:00", call_time: "2027-01-25 08:30:00", notes: "Salone internazionale B2B moda e abbigliamento", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 430, title: "FINCHE' GIUDICE NON CI SEPARI", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-03-05 21:00:00", call_time: "2027-03-05 08:30:00", notes: "Teatro Mediterraneo – Commedia teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 431, title: "Premio Parthenope 2027 – 3^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-03-13 00:00:00", call_time: "2027-03-13 08:30:00", notes: "Manifestazione presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 432, title: "MASANIELLO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-03-20 21:00:00", call_time: "2027-03-20 08:30:00", notes: "Teatro Mediterraneo – Spettacolo musicale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 433, title: "MASANIELLO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-04-01 21:00:00", call_time: "2027-04-01 08:30:00", notes: "Teatro Mediterraneo – Spettacolo musicale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 434, title: "MASANIELLO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-04-08 21:00:00", call_time: "2027-04-08 08:30:00", notes: "Teatro Mediterraneo – Spettacolo musicale", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 435, title: "GREEN MED EXPO & SYMPOSIUM 2027", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-05-12 09:00:00", call_time: "2027-05-12 08:30:00", notes: "Stati Generali dell'Ambiente e Green Economy", status: "Da confermare", earnings: 0.0, conflict: false },
+    { id: 436, title: "65° CONGRESSO SICM", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-10-14 13:00:00", call_time: "2027-10-14 08:30:00", notes: "65° Congresso Nazionale Società Italiana Chirurgia della Mano", status: "Da confermare", earnings: 0.0, conflict: false }
   ];
 }
 
@@ -325,45 +442,165 @@ function saveLocalEvents(events) {
   }
 }
 
+function _statusPriority(st) {
+  const s = (st || '').toLowerCase().trim();
+  if (s === 'lavoro io') return 3;
+  if (s === 'riposo' || s === 'ignora') return 2;
+  return 1;
+}
+
+/**
+ * Ripara, bonifica e deduplica il catalogo locale dello smartphone:
+ * - Ripristina la data/ora ufficiale esatta per ogni evento (es. Juve Stabia vs Arezzo -> 7 Nov 2026,
+ *   Napoli vs Lazio -> 8 Nov 2026, Napoli vs Lecce -> 5 Dic 2026) corrotta dal vecchio bug di ID shift.
+ * - Preserva al 100% lo stato ("Lavoro io" / "Riposo") e i guadagni (€) registrati dall'utente.
+ * - Elimina i doppioni (es. "ÈEmpoli" vs "Empoli", "–" vs spazio) unendo stato e compensi.
+ * - Azzera i falsi avvisi (updated_flag = false) generati dallo slittamento ID.
+ */
+function repairAndSanitizeLocalEvents(rawEvents) {
+  const canonicalSeeds = getDefaultSeedEvents();
+  const singleCanonicalMap = new Map();
+  const multiCanonicalMap = new Map(); // key -> array of seed objects
+
+  canonicalSeeds.forEach(seed => {
+    const k = normalizeEventKey(seed.title);
+    if (MULTI_DATE_SHOW_KEYS.has(k)) {
+      if (!multiCanonicalMap.has(k)) multiCanonicalMap.set(k, []);
+      multiCanonicalMap.get(k).push(seed);
+    } else {
+      singleCanonicalMap.set(k, seed);
+    }
+  });
+
+  const mergedByGroupKey = new Map();
+
+  (rawEvents || []).forEach(ev => {
+    if (!ev || !ev.title) return;
+    const cleanedTitle = cleanDisplayTitle(ev.title);
+    const normKey = normalizeEventKey(cleanedTitle);
+
+    if (BOGUS_VOICE_TITLES.has(normKey)) return;
+
+    let groupKey = normKey;
+    let canonicalTarget = null;
+
+    if (singleCanonicalMap.has(normKey)) {
+      canonicalTarget = singleCanonicalMap.get(normKey);
+      groupKey = normKey;
+    } else if (multiCanonicalMap.has(normKey)) {
+      const candidates = multiCanonicalMap.get(normKey);
+      const evDate = (ev.event_start || '').slice(0, 10);
+      canonicalTarget = candidates.find(c => c.event_start.slice(0, 10) === evDate) || null;
+      if (!canonicalTarget) {
+        // La data locale di questo spettacolo multi-data era stata corrotta dallo shift ID:
+        // assegna la prima data canonica non ancora occupata per questo spettacolo
+        canonicalTarget = candidates.find(c => !mergedByGroupKey.has(`${normKey}__${c.event_start.slice(0, 10)}`)) || candidates[0];
+      }
+      groupKey = `${normKey}__${canonicalTarget.event_start.slice(0, 10)}`;
+    } else {
+      groupKey = `${normKey}__${(ev.event_start || '').slice(0, 10)}`;
+    }
+
+    const cleanEv = {
+      ...ev,
+      title: canonicalTarget ? canonicalTarget.title : cleanedTitle,
+      venue: canonicalTarget ? canonicalTarget.venue : (ev.venue || ''),
+      category: canonicalTarget ? canonicalTarget.category : (ev.category || 'CALCIO'),
+      event_start: canonicalTarget ? canonicalTarget.event_start : ev.event_start,
+      call_time: canonicalTarget ? canonicalTarget.call_time : (ev.call_time || ev.event_start),
+      notes: canonicalTarget ? canonicalTarget.notes : (ev.notes || ''),
+      status: ev.status || 'Da confermare',
+      earnings: ev.earnings !== null && ev.earnings !== undefined ? Number(ev.earnings) : 0.0,
+      updated_flag: false,
+      conflict: false
+    };
+
+    if (!mergedByGroupKey.has(groupKey)) {
+      mergedByGroupKey.set(groupKey, cleanEv);
+    } else {
+      const existing = mergedByGroupKey.get(groupKey);
+      // Unisce preservando la scelta utente più forte e il guadagno maggiore
+      if (_statusPriority(cleanEv.status) > _statusPriority(existing.status)) {
+        existing.status = cleanEv.status;
+      }
+      const earnA = Number(existing.earnings || 0);
+      const earnB = Number(cleanEv.earnings || 0);
+      if (earnB > earnA) {
+        existing.earnings = earnB;
+      }
+    }
+  });
+
+  // Assicura che tutti i 91 eventi ufficiali della stagione 2026/2027 siano presenti
+  canonicalSeeds.forEach(seed => {
+    const normKey = normalizeEventKey(seed.title);
+    const groupKey = MULTI_DATE_SHOW_KEYS.has(normKey)
+      ? `${normKey}__${seed.event_start.slice(0, 10)}`
+      : normKey;
+    if (!mergedByGroupKey.has(groupKey)) {
+      mergedByGroupKey.set(groupKey, { ...seed, updated_flag: false });
+    }
+  });
+
+  const result = Array.from(mergedByGroupKey.values());
+  result.sort((a, b) => (a.event_start || '').localeCompare(b.event_start || ''));
+  return result;
+}
+
 function recomputeLocalConflicts(events) {
   if (!events || !events.length) return;
   const byDate = {};
   events.forEach(e => {
-    if (!e.event_start) return;
+    e.conflict = false;
+    if (!e.event_start || isEventHiddenFromCalendar(e)) return;
     const d = e.event_start.slice(0, 10);
     if (!byDate[d]) byDate[d] = [];
     byDate[d].push(e);
   });
 
   Object.keys(byDate).forEach(d => {
-    const isConflict = byDate[d].length > 1;
-    byDate[d].forEach(ev => {
-      ev.conflict = isConflict;
+    const dayEvs = byDate[d];
+    if (dayEvs.length <= 1) return;
+    const workedEvs = dayEvs.filter(ev => (ev.status || '').toLowerCase().trim() === 'lavoro io');
+    // Se l'utente ha già scelto "Lavoro io" per 1 singolo turno in quella data, la giornata è risolta!
+    const isUnresolvedConflict = workedEvs.length > 1 || (workedEvs.length === 0 && dayEvs.length > 1);
+    dayEvs.forEach(ev => {
+      ev.conflict = isUnresolvedConflict;
     });
   });
 }
 
 function computeLocalAlertsData(events) {
+  const todayYmd = formatYMD(new Date());
   const byDate = {};
   events.forEach(e => {
-    if (!e.event_start) return;
+    if (!e.event_start || isEventHiddenFromCalendar(e)) return;
     const d = e.event_start.slice(0, 10);
+    if (d < todayYmd) return; // Mostra solo conflitti presenti o futuri negli avvisi attivi
     if (!byDate[d]) byDate[d] = [];
     byDate[d].push(e);
   });
 
   const conflicts = [];
-  Object.keys(byDate).forEach(d => {
-    if (byDate[d].length > 1) {
-      conflicts.push({
-        date: d,
-        count: byDate[d].length,
-        events: byDate[d]
-      });
+  Object.keys(byDate).sort().forEach(d => {
+    const dayEvs = byDate[d];
+    if (dayEvs.length > 1) {
+      const workedEvs = dayEvs.filter(ev => (ev.status || '').toLowerCase().trim() === 'lavoro io');
+      if (workedEvs.length > 1 || workedEvs.length === 0) {
+        conflicts.push({
+          date: d,
+          count: dayEvs.length,
+          events: dayEvs
+        });
+      }
     }
   });
 
-  const changes = events.filter(e => e.updated_flag === 1 || e.updated_flag === true);
+  const changes = events.filter(e =>
+    (e.updated_flag === 1 || e.updated_flag === true) &&
+    !isEventHiddenFromCalendar(e) &&
+    (e.event_start || '').slice(0, 10) >= todayYmd
+  );
 
   return {
     conflicts_count: conflicts.length,
@@ -373,39 +610,66 @@ function computeLocalAlertsData(events) {
   };
 }
 
-// Sincronizzazione intelligente col backend: scarica partite nuove e aggiorna date/orari cambiati senza toccare le scelte dell'utente
+// Sincronizzazione intelligente col backend: abbina SEMPRE per titolo normalizzato (MAI per ID cieco!)
 async function syncSoftWithBackend() {
   try {
     const res = await apiGet('/api/events');
     if (!res || !res.events || !res.events.length) return;
 
+    const canonicalSeeds = getDefaultSeedEvents();
+    const canonicalByKey = new Map();
+    canonicalSeeds.forEach(s => {
+      const k = normalizeEventKey(s.title);
+      if (!MULTI_DATE_SHOW_KEYS.has(k)) canonicalByKey.set(k, s);
+    });
+
     let hasChanges = false;
     res.events.forEach(remoteEv => {
-      // Cerca l'evento per ID oppure per corrispondenza di titolo e data
-      const exists = STATE.events.find(e => 
-        e.id === remoteEv.id || 
-        ((e.title || '').trim().toLowerCase() === (remoteEv.title || '').trim().toLowerCase() &&
-         (e.event_start || '').slice(0, 10) === (remoteEv.event_start || '').slice(0, 10))
-      );
+      if (!remoteEv || !remoteEv.title) return;
+      const remoteKey = normalizeEventKey(remoteEv.title);
+      if (BOGUS_VOICE_TITLES.has(remoteKey)) return;
+
+      const remoteDate = (remoteEv.event_start || '').slice(0, 10);
+      const exists = STATE.events.find(e => {
+        const localKey = normalizeEventKey(e.title);
+        if (localKey !== remoteKey) return false;
+        if (MULTI_DATE_SHOW_KEYS.has(remoteKey)) {
+          return (e.event_start || '').slice(0, 10) === remoteDate;
+        }
+        return true;
+      });
 
       if (exists) {
-        exists.id = remoteEv.id; // Sincronizza l'ID ufficiale del database
-        // Se Lega Calcio o Mostra d'Oltremare ha spostato data o orario (anticipo/posticipo)
-        if (remoteEv.event_start && exists.event_start !== remoteEv.event_start) {
-          console.log(`[SYNC] Cambio data/orario per "${exists.title}": da ${exists.event_start} a ${remoteEv.event_start}`);
+        if (exists.id !== remoteEv.id) {
+          exists.id = remoteEv.id;
+          hasChanges = true;
+        }
+        // Se l'evento fa parte del calendario certificato 2026/2027, mantiene la data canonica
+        if (canonicalByKey.has(remoteKey)) {
+          const canon = canonicalByKey.get(remoteKey);
+          if (exists.event_start !== canon.event_start) {
+            exists.event_start = canon.event_start;
+            exists.call_time = canon.call_time;
+            exists.updated_flag = false;
+            hasChanges = true;
+          }
+        } else if (remoteEv.event_start && exists.event_start !== remoteEv.event_start) {
           exists.event_start = remoteEv.event_start;
           exists.call_time = remoteEv.call_time || remoteEv.event_start;
-          exists.updated_flag = true;
           hasChanges = true;
         }
       } else {
-        // Nuovo evento aggiunto in calendario
-        STATE.events.push(remoteEv);
+        STATE.events.push({
+          ...remoteEv,
+          title: cleanDisplayTitle(remoteEv.title),
+          updated_flag: false
+        });
         hasChanges = true;
       }
     });
 
     if (hasChanges) {
+      STATE.events = repairAndSanitizeLocalEvents(STATE.events);
       recomputeLocalConflicts(STATE.events);
       saveLocalEvents(STATE.events);
       renderHudCalendar();
@@ -426,8 +690,9 @@ async function loadEvents() {
     let local = getLocalEvents();
 
     if (local && local.length > 0) {
-      STATE.events = local;
-      console.log(`[STORAGE] Caricati ${local.length} eventi dal database locale dello smartphone`);
+      STATE.events = repairAndSanitizeLocalEvents(local);
+      saveLocalEvents(STATE.events);
+      console.log(`[STORAGE] Caricati e bonificati ${STATE.events.length} eventi dal database locale dello smartphone`);
     } else {
       // Prima apertura sul telefono: prova il server, altrimenti carica il seed integrato
       let initialEvents = [];
@@ -444,9 +709,9 @@ async function loadEvents() {
         initialEvents = getDefaultSeedEvents();
       }
 
-      STATE.events = initialEvents;
+      STATE.events = repairAndSanitizeLocalEvents(initialEvents);
       saveLocalEvents(STATE.events);
-      console.log(`[STORAGE] Database locale inizializzato con ${initialEvents.length} eventi`);
+      console.log(`[STORAGE] Database locale inizializzato con ${STATE.events.length} eventi`);
     }
 
     recomputeLocalConflicts(STATE.events);
@@ -461,7 +726,7 @@ async function loadEvents() {
   } catch (err) {
     console.error('Errore caricamento eventi:', err);
     if (!STATE.events || STATE.events.length === 0) {
-      STATE.events = getDefaultSeedEvents();
+      STATE.events = repairAndSanitizeLocalEvents(getDefaultSeedEvents());
       recomputeLocalConflicts(STATE.events);
       renderHudCalendar();
       renderNextShift();
@@ -715,20 +980,24 @@ function renderHudWeekView() {
     const colClass = isSelected ? 'week-day-column active-day-col' : 'week-day-column';
 
     // Filtra eventi per la data e categorie attive (esclude eventi con stato Riposo/Ignora)
-    const colEvents = STATE.events.filter(ev => {
-      if (isEventHiddenFromCalendar(ev)) return false;
-      if (!ev.event_start.startsWith(dateStr)) return false;
-      const catGroup = classifyEventCategory(ev);
-      return STATE.activeCategories.has(catGroup);
-    });
+    const colEvents = STATE.events
+      .filter(ev => {
+        if (isEventHiddenFromCalendar(ev)) return false;
+        if (!ev.event_start.startsWith(dateStr)) return false;
+        const catGroup = classifyEventCategory(ev);
+        return STATE.activeCategories.has(catGroup);
+      })
+      .sort((a, b) => (a.event_start || '').localeCompare(b.event_start || ''));
 
-    // Render Event Cards
+    // Render Event Cards (anti-collisione verticale se ci sono più eventi nello stesso giorno)
+    let prevBottom = -10;
+    const isMultiEventDay = colEvents.length > 1;
     const cardsHtml = colEvents.map(ev => {
       const style = getHudEventStyle(ev);
       const timeParts = ev.event_start.split(' ')[1] || '09:00:00';
       const [h, m] = timeParts.split(':').map(Number);
       const startMinutes = (h - 8) * 60 + m;
-      const top = Math.max(0, (startMinutes / 60) * 60);
+      const naturalTop = Math.max(0, (startMinutes / 60) * 60);
 
       // Stima durata evento
       let durationHours = 2.0;
@@ -741,7 +1010,10 @@ function renderHudWeekView() {
         durationHours = 1.5;
       }
 
-      const height = Math.max(62, durationHours * 60);
+      const naturalHeight = Math.max(62, durationHours * 60);
+      const height = isMultiEventDay ? Math.min(naturalHeight, 86) : naturalHeight;
+      const top = Math.max(naturalTop, prevBottom + 6);
+      prevBottom = top + height;
 
       const startTimeFormatted = formatTime(ev.event_start);
       const endDt = new Date(new Date(ev.event_start.replace(' ', 'T')).getTime() + durationHours * 3600 * 1000);
@@ -858,19 +1130,24 @@ function renderHudDayView() {
   dayLines.innerHTML = linesHtml;
 
   const selectedYMD = formatYMD(STATE.selectedDate);
-  const dayEvents = STATE.events.filter(ev => {
-    if (isEventHiddenFromCalendar(ev)) return false;
-    if (!ev.event_start.startsWith(selectedYMD)) return false;
-    const catGroup = classifyEventCategory(ev);
-    return STATE.activeCategories.has(catGroup);
-  });
+  const dayEvents = STATE.events
+    .filter(ev => {
+      if (isEventHiddenFromCalendar(ev)) return false;
+      if (!ev.event_start.startsWith(selectedYMD)) return false;
+      const catGroup = classifyEventCategory(ev);
+      return STATE.activeCategories.has(catGroup);
+    })
+    .sort((a, b) => (a.event_start || '').localeCompare(b.event_start || ''));
 
+  let prevDayBottom = -10;
   dayEventsWrap.innerHTML = dayEvents.map(ev => {
     const style = getHudEventStyle(ev);
     const timeParts = ev.event_start.split(' ')[1] || '09:00:00';
     const [h, m] = timeParts.split(':').map(Number);
-    const top = Math.max(0, ((h - 8) + m / 60) * 60);
+    const naturalTop = Math.max(0, ((h - 8) + m / 60) * 60);
     const height = 85;
+    const top = Math.max(naturalTop, prevDayBottom + 8);
+    prevDayBottom = top + height;
     const startTimeFormatted = formatTime(ev.event_start);
     const convText = ev.call_time ? `🚨 Conv. ${formatTime(ev.call_time)}` : '';
     const venueText = ev.venue || 'Sede';
@@ -999,7 +1276,7 @@ function renderShiftsList() {
     let statusClass = 'pending', statusLabel = 'DA CONFERMARE';
     if ((ev.status || '').toLowerCase().includes('lavoro')) { statusClass = 'lavoro'; statusLabel = '✅ LAVORO IO'; }
     else if ((ev.status || '').toLowerCase().includes('riposo')) { statusClass = 'riposo'; statusLabel = '❌ RIPOSO'; }
-    if (ev.conflict) { statusClass = 'conflict'; statusLabel = '⚠️ CONFLITTO'; }
+    else if (ev.conflict) { statusClass = 'conflict'; statusLabel = '⚠️ CONFLITTO'; }
 
     const earningsFormatted = formatEarnings(ev.earnings);
     const earningsHtml = earningsFormatted
@@ -1359,12 +1636,7 @@ function renderLocalAlerts() {
 }
 
 async function loadAlerts() {
-  try {
-    const data = await apiGet('/api/alerts');
-    renderAlerts(data);
-  } catch (err) {
-    console.error('Errore avvisi:', err);
-  }
+  renderLocalAlerts();
 }
 
 function renderAlerts(data) {
@@ -1563,7 +1835,7 @@ async function confirmEvent(status) {
 
   // Notifica al server in background se online (silenzioso se offline)
   try {
-    apiPost(`/api/events/${currentEv.id}/status`, { status }).catch(() => {});
+    apiPost(`/api/events/${currentEv.id}/status`, { status, title: currentEv.title }).catch(() => {});
   } catch (err) {}
 }
 
@@ -1658,7 +1930,7 @@ async function handleEarningsSubmit(e) {
 
   // Sincronizza col backend in background se online
   try {
-    apiPost(`/api/events/${ev.id}/earnings`, { earnings: amount }).catch(() => {});
+    apiPost(`/api/events/${ev.id}/earnings`, { earnings: amount, title: ev.title }).catch(() => {});
   } catch (err) {}
 }
 
@@ -1718,9 +1990,11 @@ async function triggerSync() {
     document.getElementById('last-sync-time').textContent =
       STATE.lastSync.toLocaleString('it-IT');
 
-    addSyncLog(`✅ Completato: ${result.events_synced || 0} eventi aggiornati`, 'success');
-    if (result.conflicts_count > 0) {
-      addSyncLog(`⚠️ ${result.conflicts_count} conflitti rilevati`, 'info');
+    const syncedCnt = result.total_synced ?? result.events_synced ?? 0;
+    const confCnt = result.active_conflicts_count ?? result.conflicts_count ?? 0;
+    addSyncLog(`✅ Completato: ${syncedCnt} eventi aggiornati`, 'success');
+    if (confCnt > 0) {
+      addSyncLog(`⚠️ ${confCnt} conflitti rilevati`, 'info');
     }
     showToast('Calendari aggiornati!', 'success');
     await loadEvents();
@@ -2630,15 +2904,14 @@ async function processVoiceCommand(cmd) {
       if (res.action && ['created', 'deleted', 'status_updated'].includes(res.action)) {
         if (res.event) {
           if (res.action === 'created') {
-            // Se l'id coincide con un seed event esistente di diverso titolo, genera un id univoco per evitare collisioni
-            if (STATE.events.some(e => e.id === res.event.id && e.title !== res.event.title)) {
+            const evNormKey = normalizeEventKey(res.event.title || '');
+            // Se l'id coincide con un evento esistente di diverso titolo, genera un id univoco per evitare collisioni
+            if (STATE.events.some(e => e.id === res.event.id && normalizeEventKey(e.title) !== evNormKey)) {
               res.event.id = Date.now();
             }
-            // Controllo duplicati: verifica per ID oppure per titolo + data
             const exists = STATE.events.find(e =>
-              e.id === res.event.id ||
-              ((e.title || '').toLowerCase() === (res.event.title || '').toLowerCase() &&
-               (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10))
+              normalizeEventKey(e.title) === evNormKey &&
+              (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10)
             );
             if (!exists) {
               STATE.events.push(res.event);
@@ -2646,12 +2919,10 @@ async function processVoiceCommand(cmd) {
               Object.assign(exists, res.event);
             }
           } else if (res.action === 'status_updated') {
-            let target = STATE.events.find(e => e.id === res.event.id);
-            if (!target && res.event.title) {
-              target = STATE.events.find(e =>
-                (e.title || '').toLowerCase() === (res.event.title || '').toLowerCase() &&
-                (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10)
-              );
+            const evNormKey = normalizeEventKey(res.event.title || '');
+            let target = STATE.events.find(e => e.id === res.event.id && normalizeEventKey(e.title) === evNormKey);
+            if (!target && evNormKey) {
+              target = STATE.events.find(e => normalizeEventKey(e.title) === evNormKey);
             }
             if (target) {
               target.status = res.event.status;
@@ -2660,10 +2931,11 @@ async function processVoiceCommand(cmd) {
               }
             }
           } else if (res.action === 'deleted') {
+            const evNormKey = normalizeEventKey(res.event.title || '');
             STATE.events = STATE.events.filter(e => {
-              if (e.id === res.event.id) return false;
-              if (res.event.title &&
-                  (e.title || '').toLowerCase() === (res.event.title || '').toLowerCase() &&
+              if (e.id === res.event.id && normalizeEventKey(e.title) === evNormKey) return false;
+              if (evNormKey &&
+                  normalizeEventKey(e.title) === evNormKey &&
                   (e.event_start || '').slice(0, 10) === (res.event.event_start || '').slice(0, 10)) {
                 return false;
               }
@@ -2937,7 +3209,7 @@ function queryTeam(keyword, teamName) {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/static/sw.js?v=2.8.0', { scope: '/' })
+      navigator.serviceWorker.register('/static/sw.js?v=2.9.0', { scope: '/' })
         .then(reg => {
           console.log('SW registrato:', reg.scope);
           // Verifica immediatamente se c'è una nuova versione sul server

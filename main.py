@@ -24,8 +24,9 @@ from database import (
     parse_datetime,
     delete_event,
     get_event_by_id,
+    sanitize_and_deduplicate_db,
 )
-from scraper import sync_all_events
+from scraper import sync_all_events, seed_initial_data
 from jarvis_voice import (
     synthesize_jarvis_speech,
     play_jarvis_speech,
@@ -49,13 +50,15 @@ async def lifespan(app: FastAPI):
     # Inizializza il database SQLite all'avvio
     init_db()
 
-    # Se il database è vuoto all'avvio, popola immediatamente con sync iniziale
+    # Se il database è vuoto o incompleto all'avvio, popola e bonifica immediatamente
     try:
         conn = get_db_connection()
         count = conn.execute("SELECT count(*) FROM events").fetchone()[0]
         conn.close()
-        if count == 0:
-            sync_all_events()
+        if count < 70:
+            sync_all_events(force_seed=True)
+        else:
+            sanitize_and_deduplicate_db(seed_initial_data())
     except Exception as e:
         print(f"Warning durante sync iniziale: {e}")
 
@@ -105,10 +108,12 @@ app.add_middleware(
 class StatusUpdateRequest(BaseModel):
     status: str = Field(..., example="Lavoro io", description="Stato: es. 'Lavoro io' o 'Riposo'")
     earnings: Optional[float] = Field(None, example=50.0, description="Guadagno/compenso in euro")
+    title: Optional[str] = Field(None, example="Juve Stabia vs Arezzo", description="Titolo opzionale per riallineamento ID")
 
 
 class EarningsUpdateRequest(BaseModel):
     earnings: Optional[float] = Field(None, example=50.0, description="Guadagno/compenso in euro")
+    title: Optional[str] = Field(None, example="Juve Stabia vs Arezzo", description="Titolo opzionale per riallineamento ID")
 
 
 class EventCreateRequest(BaseModel):
@@ -426,7 +431,7 @@ def change_event_status(event_id: int, payload: StatusUpdateRequest):
             detail="Il campo 'status' non può essere vuoto"
         )
 
-    updated = update_event_status(event_id, valid_status, payload.earnings)
+    updated = update_event_status(event_id, valid_status, payload.earnings, title=payload.title)
     if not updated:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
@@ -444,7 +449,7 @@ def change_event_earnings(event_id: int, payload: EarningsUpdateRequest):
     """
     Aggiorna il compenso/guadagno previsto per una chiamata o evento.
     """
-    updated = update_event_earnings(event_id, payload.earnings)
+    updated = update_event_earnings(event_id, payload.earnings, title=payload.title)
     if not updated:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
