@@ -3,15 +3,15 @@
    Strategia: Network-first con cache fallback per offline
    ================================================================ */
 
-const CACHE_NAME = 'steward-os-v9';
-const STATIC_CACHE = 'steward-static-v9';
+const CACHE_NAME = 'steward-os-v10';
+const STATIC_CACHE = 'steward-static-v10';
 
 // Assets essenziali da precacherizzare
 const PRECACHE_ASSETS = [
   '/',
   '/static/index.html',
-  '/static/style.css?v=2.9.0',
-  '/static/app.js?v=2.9.0',
+  '/static/style.css?v=2.10.0',
+  '/static/app.js?v=2.10.0',
   '/static/manifest.json',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',

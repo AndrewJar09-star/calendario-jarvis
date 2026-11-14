@@ -326,146 +326,56 @@ function fetchAllEvents() {
 // ─── SCHEDULE SEED (CALENDARIO COMPLETO PARTITE IN CASA 2026/2027) ────────────
 function getFootballScheduleSeed() {
   return [
-    // --- STADIO DIEGO ARMANDO MARADONA (SSC NAPOLI) ---
-    {
-      title: "Napoli vs Roma",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-10-24 18:00:00",
-      call_time: "2026-10-24 14:00:00",
-      notes: "Serie A - Partita di cartello allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Bodø/Glimt",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-10-20 21:00:00",
-      call_time: "2026-10-20 17:00:00",
-      notes: "Champions League - Notte europea allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Lazio",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-11-08 12:30:00",
-      call_time: "2026-11-08 08:30:00",
-      notes: "Serie A - Anticipo domenicale allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Torino",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-11-21 20:45:00",
-      call_time: "2026-11-21 16:45:00",
-      notes: "Serie A - Anticipo serale allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Sparta Praga",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-11-26 21:00:00",
-      call_time: "2026-11-26 17:00:00",
-      notes: "Champions League - Fase a gironi allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Juventus",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-12-06 20:45:00",
-      call_time: "2026-12-06 16:45:00",
-      notes: "Serie A - Big Match allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Verona",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2026-12-20 15:00:00",
-      call_time: "2026-12-20 11:00:00",
-      notes: "Serie A - Turno pre-natalizio allo Stadio Maradona"
-    },
-    {
-      title: "Napoli vs Inter",
-      venue: "Stadio Diego Armando Maradona",
-      category: "CALCIO",
-      event_start: "2027-01-10 20:45:00",
-      call_time: "2027-01-10 16:45:00",
-      notes: "Serie A - Scontro al vertice allo Stadio Maradona"
-    },
-
-    // --- STADIO ROMEO MENTI (SS JUVE STABIA) ---
-    {
-      title: "Juve Stabia vs Sassuolo",
-      venue: "Stadio Romeo Menti",
-      category: "CALCIO",
-      event_start: "2026-10-25 15:00:00",
-      call_time: "2026-10-25 11:00:00",
-      notes: "Serie B - Gara casalinga allo Stadio Romeo Menti (Castellammare)"
-    },
-    {
-      title: "Juve Stabia vs Spezia",
-      venue: "Stadio Romeo Menti",
-      category: "CALCIO",
-      event_start: "2026-11-07 14:00:00",
-      call_time: "2026-11-07 10:00:00",
-      notes: "Serie B - Partita allo Stadio Romeo Menti"
-    },
-    {
-      title: "Juve Stabia vs Brescia",
-      venue: "Stadio Romeo Menti",
-      category: "CALCIO",
-      event_start: "2026-11-28 15:00:00",
-      call_time: "2026-11-28 11:00:00",
-      notes: "Serie B - Gara casalinga allo Stadio Romeo Menti"
-    },
-    {
-      title: "Juve Stabia vs Salernitana",
-      venue: "Stadio Romeo Menti",
-      category: "CALCIO",
-      event_start: "2026-12-13 17:15:00",
-      call_time: "2026-12-13 13:15:00",
-      notes: "Serie B - Derby campano ad altissima intensità al Romeo Menti"
-    },
-    {
-      title: "Juve Stabia vs Pisa",
-      venue: "Stadio Romeo Menti",
-      category: "CALCIO",
-      event_start: "2026-12-26 15:00:00",
-      call_time: "2026-12-26 11:00:00",
-      notes: "Serie B - Boxing Day allo Stadio Romeo Menti"
-    },
-
-    // --- STADIO ALBERTO PINTO (CASERTANA FC) ---
-    {
-      title: "Casertana vs Benevento",
-      venue: "Stadio Alberto Pinto",
-      category: "CALCIO",
-      event_start: "2026-10-26 20:30:00",
-      call_time: "2026-10-26 16:30:00",
-      notes: "Serie C Girone C - Derby campano serale allo Stadio Alberto Pinto"
-    },
-    {
-      title: "Casertana vs Catania",
-      venue: "Stadio Alberto Pinto",
-      category: "CALCIO",
-      event_start: "2026-11-15 17:30:00",
-      call_time: "2026-11-15 13:30:00",
-      notes: "Serie C Girone C - Gara casalinga allo Stadio Alberto Pinto"
-    },
-    {
-      title: "Casertana vs Avellino",
-      venue: "Stadio Alberto Pinto",
-      category: "CALCIO",
-      event_start: "2026-12-05 20:45:00",
-      call_time: "2026-12-05 16:45:00",
-      notes: "Serie C Girone C - Derby caldissimo allo Stadio Alberto Pinto"
-    },
-    {
-      title: "Casertana vs Foggia",
-      venue: "Stadio Alberto Pinto",
-      category: "CALCIO",
-      event_start: "2026-12-22 18:30:00",
-      call_time: "2026-12-22 14:30:00",
-      notes: "Serie C Girone C - Gara infrasettimanale allo Stadio Pinto"
-    }
+    {"title": "Napoli vs Bodø/Glimt", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-10-20 21:00:00", "call_time": "2026-10-20 17:00:00", "notes": "Champions League – Notte europea allo Stadio Maradona"},
+    {"title": "Napoli vs Roma", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-10-24 18:00:00", "call_time": "2026-10-24 14:00:00", "notes": "Serie A – Derby del Sole allo Stadio Maradona"},
+    {"title": "Napoli vs Lazio", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-11-08 12:30:00", "call_time": "2026-11-08 08:30:00", "notes": "Serie A – Anticipo domenicale allo Stadio Maradona"},
+    {"title": "Napoli vs Torino", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-11-21 20:45:00", "call_time": "2026-11-21 16:45:00", "notes": "Serie A – Anticipo serale allo Stadio Maradona"},
+    {"title": "Napoli vs Lecce", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-12-05 20:45:00", "call_time": "2026-12-05 16:45:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Club Brugge", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-12-08 21:00:00", "call_time": "2026-12-08 17:00:00", "notes": "Champions League – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Milan", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-12-13 20:45:00", "call_time": "2026-12-13 16:45:00", "notes": "Serie A – Big match allo Stadio Maradona"},
+    {"title": "Napoli vs Fiorentina", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2026-12-16 21:00:00", "call_time": "2026-12-16 17:00:00", "notes": "Coppa Italia – Ottavi di finale allo Stadio Maradona"},
+    {"title": "Napoli vs Cagliari", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-01-07 20:45:00", "call_time": "2027-01-07 16:45:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Fiorentina", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-01-17 15:00:00", "call_time": "2027-01-17 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona (orario da confermare)"},
+    {"title": "Napoli vs Viking FK", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-01-27 21:00:00", "call_time": "2027-01-27 17:00:00", "notes": "Champions League – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Inter", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-01-31 15:00:00", "call_time": "2027-01-31 11:00:00", "notes": "Serie A – Scontro al vertice allo Stadio Maradona"},
+    {"title": "Napoli vs Juventus", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-02-14 15:00:00", "call_time": "2027-02-14 11:00:00", "notes": "Serie A – Classico al Maradona"},
+    {"title": "Napoli vs Parma", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-03-07 15:00:00", "call_time": "2027-03-07 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Venezia", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-03-21 15:00:00", "call_time": "2027-03-21 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Sassuolo", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-04-11 15:00:00", "call_time": "2027-04-11 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Udinese", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-04-25 15:00:00", "call_time": "2027-04-25 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Monza", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-05-09 15:00:00", "call_time": "2027-05-09 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Genoa", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-05-16 15:00:00", "call_time": "2027-05-16 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona"},
+    {"title": "Napoli vs Atalanta", "venue": "Stadio Diego Armando Maradona", "category": "CALCIO", "event_start": "2027-05-30 15:00:00", "call_time": "2027-05-30 11:00:00", "notes": "Serie A – Ultima giornata allo Stadio Maradona"},
+    {"title": "Juve Stabia vs Südtirol", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-10-18 15:00:00", "call_time": "2026-10-18 11:00:00", "notes": "Serie B – Stadio Romeo Menti, Castellammare di Stabia"},
+    {"title": "Juve Stabia vs Verona", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-10-28 20:00:00", "call_time": "2026-10-28 16:00:00", "notes": "Serie B – Turno infrasettimanale Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Arezzo", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-11-07 15:00:00", "call_time": "2026-11-07 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Catanzaro", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-11-24 19:00:00", "call_time": "2026-11-24 15:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Benevento", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-12-05 19:30:00", "call_time": "2026-12-05 15:30:00", "notes": "Serie B – Derby campano Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Padova", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-12-12 15:00:00", "call_time": "2026-12-12 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Mantova", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-12-19 15:00:00", "call_time": "2026-12-19 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Sampdoria", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-01-09 15:00:00", "call_time": "2027-01-09 11:00:00", "notes": "Serie B – Big match allo Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Cremonese", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-01-23 15:00:00", "call_time": "2027-01-23 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Carrarese", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-02-06 15:00:00", "call_time": "2027-02-06 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Empoli", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-02-20 15:00:00", "call_time": "2027-02-20 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Modena", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-02-27 15:00:00", "call_time": "2027-02-27 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Palermo", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-03-13 15:00:00", "call_time": "2027-03-13 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Virtus Entella", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-04-03 15:00:00", "call_time": "2027-04-03 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Avellino", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-04-17 15:00:00", "call_time": "2027-04-17 11:00:00", "notes": "Serie B – Derby campano allo Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Vicenza", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-05-01 15:00:00", "call_time": "2027-05-01 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Juve Stabia vs Ascoli", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-05-14 15:00:00", "call_time": "2027-05-14 11:00:00", "notes": "Serie B – Stadio Romeo Menti"},
+    {"title": "Casertana vs Bari", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-10-23 20:30:00", "call_time": "2026-10-23 16:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto, Caserta"},
+    {"title": "Casertana vs Casarano", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-11-07 14:30:00", "call_time": "2026-11-07 10:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Salernitana", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-11-20 20:30:00", "call_time": "2026-11-20 16:30:00", "notes": "Serie C Girone C – Derby campano Stadio Alberto Pinto"},
+    {"title": "Casertana vs Potenza", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-12-05 17:30:00", "call_time": "2026-12-05 13:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Crotone", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-12-19 17:30:00", "call_time": "2026-12-19 13:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Savoia", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-01-10 15:00:00", "call_time": "2027-01-10 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Inter U23", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-01-24 15:00:00", "call_time": "2027-01-24 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Cerignola", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-02-07 15:00:00", "call_time": "2027-02-07 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Cavese", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-02-14 15:00:00", "call_time": "2027-02-14 11:00:00", "notes": "Serie C Girone C – Derby campano Stadio Alberto Pinto"},
+    {"title": "Casertana vs Sorrento", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-02-28 15:00:00", "call_time": "2027-02-28 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Giugliano", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-03-07 15:00:00", "call_time": "2027-03-07 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Cosenza", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-03-21 15:00:00", "call_time": "2027-03-21 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Foggia", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-04-04 15:00:00", "call_time": "2027-04-04 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"},
+    {"title": "Casertana vs Picerno", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-04-18 15:00:00", "call_time": "2027-04-18 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto"}
   ];
 }

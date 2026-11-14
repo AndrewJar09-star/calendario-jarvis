@@ -58,17 +58,17 @@ async def lifespan(app: FastAPI):
         if count < 70:
             sync_all_events(force_seed=True)
         else:
-            # Solo deduplicazione/pulizia: il riallineamento ai calendari ufficiali
-            # avviene in sync_all_events (live con fallback seed).
-            sanitize_and_deduplicate_db()
+            # Bonifica e riallinea subito ai dati seed canonici in attesa del primo job di sync
+            sanitize_and_deduplicate_db(seed_initial_data())
     except Exception as e:
         print(f"Warning durante sync iniziale: {e}")
 
-    # Programma il job di sincronizzazione ogni 6 ore
+    # Programma il job di sincronizzazione ogni 6 ore (con prima esecuzione subito dopo l'avvio)
     scheduler.add_job(
         sync_all_events,
         trigger="interval",
         hours=6,
+        next_run_time=datetime.now() + timedelta(seconds=2),
         id="sync_events_job",
         replace_existing=True,
         misfire_grace_time=3600,

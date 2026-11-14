@@ -321,104 +321,117 @@ function normalizeEventKey(title) {
 
 function getDefaultSeedEvents() {
   return [
-    // SSC Napoli (Stadio Maradona) — 24 Partite
-    { id: 101, title: "Napoli vs Bodø/Glimt", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-20 21:00:00", call_time: "2026-10-20 17:00:00", notes: "Champions League – Notte europea allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 102, title: "Napoli vs Roma", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-10-24 18:00:00", call_time: "2026-10-24 14:00:00", notes: "Serie A – Derby del Sole allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 103, title: "Napoli vs Bologna", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-01 18:00:00", call_time: "2026-11-01 14:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 104, title: "Napoli vs Feyenoord", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-04 21:00:00", call_time: "2026-11-04 17:00:00", notes: "Champions League – Notte europea allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 105, title: "Napoli vs Lazio", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-08 12:30:00", call_time: "2026-11-08 08:30:00", notes: "Serie A – Anticipo domenicale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 106, title: "Napoli vs Torino", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-21 20:45:00", call_time: "2026-11-21 16:45:00", notes: "Serie A – Anticipo serale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 107, title: "Napoli vs Empoli", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-11-29 15:00:00", call_time: "2026-11-29 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 108, title: "Napoli vs Lecce", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-05 20:45:00", call_time: "2026-12-05 16:45:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 109, title: "Napoli vs Club Bruges", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-08 21:00:00", call_time: "2026-12-08 17:00:00", notes: "Champions League – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 110, title: "Napoli vs Milan", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-13 20:45:00", call_time: "2026-12-13 16:45:00", notes: "Serie A – Big match allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 111, title: "Napoli vs Fiorentina", venue: "Stadio Maradona", category: "CALCIO", event_start: "2026-12-16 21:00:00", call_time: "2026-12-16 17:00:00", notes: "Coppa Italia – Ottavi di finale allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 112, title: "Napoli vs Cagliari", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-07 20:45:00", call_time: "2027-01-07 16:45:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 113, title: "Napoli vs Verona", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-17 15:00:00", call_time: "2027-01-17 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 114, title: "Napoli vs Viking FK", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-27 21:00:00", call_time: "2027-01-27 17:00:00", notes: "Champions League – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 115, title: "Napoli vs Inter", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-01-31 15:00:00", call_time: "2027-01-31 11:00:00", notes: "Serie A – Scontro al vertice allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 116, title: "Napoli vs Juventus", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-02-14 15:00:00", call_time: "2027-02-14 11:00:00", notes: "Serie A – Classico al Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 117, title: "Napoli vs Como", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-02-28 15:00:00", call_time: "2027-02-28 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 118, title: "Napoli vs Parma", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-03-07 15:00:00", call_time: "2027-03-07 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 119, title: "Napoli vs Venezia", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-03-21 15:00:00", call_time: "2027-03-21 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 120, title: "Napoli vs Sassuolo", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-04-11 15:00:00", call_time: "2027-04-11 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 121, title: "Napoli vs Udinese", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-04-25 15:00:00", call_time: "2027-04-25 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 122, title: "Napoli vs Monza", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-05-09 15:00:00", call_time: "2027-05-09 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 123, title: "Napoli vs Genoa", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-05-16 15:00:00", call_time: "2027-05-16 11:00:00", notes: "Serie A – Stadio Diego Armando Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 124, title: "Napoli vs Atalanta", venue: "Stadio Maradona", category: "CALCIO", event_start: "2027-05-30 15:00:00", call_time: "2027-05-30 11:00:00", notes: "Serie A – Ultima giornata allo Stadio Maradona", status: "Da confermare", earnings: 0.0, conflict: false },
+    // SSC Napoli (Stadio Maradona) — 20 Partite
+    {"id": 101, "title": "Napoli vs Bodø/Glimt", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-10-20 21:00:00", "call_time": "2026-10-20 17:00:00", "notes": "Champions League – Notte europea allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 102, "title": "Napoli vs Roma", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-10-24 18:00:00", "call_time": "2026-10-24 14:00:00", "notes": "Serie A – Derby del Sole allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 103, "title": "Napoli vs Lazio", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-11-08 12:30:00", "call_time": "2026-11-08 08:30:00", "notes": "Serie A – Anticipo domenicale allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 104, "title": "Napoli vs Torino", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-11-21 20:45:00", "call_time": "2026-11-21 16:45:00", "notes": "Serie A – Anticipo serale allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 105, "title": "Napoli vs Lecce", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-12-05 20:45:00", "call_time": "2026-12-05 16:45:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 106, "title": "Napoli vs Club Brugge", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-12-08 21:00:00", "call_time": "2026-12-08 17:00:00", "notes": "Champions League – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 107, "title": "Napoli vs Milan", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-12-13 20:45:00", "call_time": "2026-12-13 16:45:00", "notes": "Serie A – Big match allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 108, "title": "Napoli vs Fiorentina", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2026-12-16 21:00:00", "call_time": "2026-12-16 17:00:00", "notes": "Coppa Italia – Ottavi di finale allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 109, "title": "Napoli vs Cagliari", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-01-07 20:45:00", "call_time": "2027-01-07 16:45:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 110, "title": "Napoli vs Fiorentina", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-01-17 15:00:00", "call_time": "2027-01-17 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona (orario da confermare)", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 111, "title": "Napoli vs Viking FK", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-01-27 21:00:00", "call_time": "2027-01-27 17:00:00", "notes": "Champions League – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 112, "title": "Napoli vs Inter", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-01-31 15:00:00", "call_time": "2027-01-31 11:00:00", "notes": "Serie A – Scontro al vertice allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 113, "title": "Napoli vs Juventus", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-02-14 15:00:00", "call_time": "2027-02-14 11:00:00", "notes": "Serie A – Classico al Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 114, "title": "Napoli vs Parma", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-03-07 15:00:00", "call_time": "2027-03-07 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 115, "title": "Napoli vs Venezia", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-03-21 15:00:00", "call_time": "2027-03-21 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 116, "title": "Napoli vs Sassuolo", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-04-11 15:00:00", "call_time": "2027-04-11 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 117, "title": "Napoli vs Udinese", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-04-25 15:00:00", "call_time": "2027-04-25 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 118, "title": "Napoli vs Monza", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-05-09 15:00:00", "call_time": "2027-05-09 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 119, "title": "Napoli vs Genoa", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-05-16 15:00:00", "call_time": "2027-05-16 11:00:00", "notes": "Serie A – Stadio Diego Armando Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 120, "title": "Napoli vs Atalanta", "venue": "Stadio Maradona", "category": "CALCIO", "event_start": "2027-05-30 15:00:00", "call_time": "2027-05-30 11:00:00", "notes": "Serie A – Ultima giornata allo Stadio Maradona", "status": "Da confermare", "earnings": 0.0, "conflict": false},
 
     // SS Juve Stabia (Stadio Romeo Menti) — 17 Partite
-    { id: 201, title: "Juve Stabia vs Südtirol", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-18 15:00:00", call_time: "2026-10-18 11:00:00", notes: "Serie B – Stadio Romeo Menti, Castellammare di Stabia", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 202, title: "Juve Stabia vs Verona", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-10-28 20:00:00", call_time: "2026-10-28 16:00:00", notes: "Serie B – Turno infrasettimanale Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 203, title: "Juve Stabia vs Arezzo", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-07 15:00:00", call_time: "2026-11-07 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 204, title: "Juve Stabia vs Catanzaro", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-11-24 19:00:00", call_time: "2026-11-24 15:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 205, title: "Juve Stabia vs Benevento", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-05 19:30:00", call_time: "2026-12-05 15:30:00", notes: "Serie B – Derby campano Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 206, title: "Juve Stabia vs Padova", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-12 15:00:00", call_time: "2026-12-12 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 207, title: "Juve Stabia vs Mantova", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2026-12-19 15:00:00", call_time: "2026-12-19 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 208, title: "Juve Stabia vs Sampdoria", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-01-09 15:00:00", call_time: "2027-01-09 11:00:00", notes: "Serie B – Big match allo Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 209, title: "Juve Stabia vs Cremonese", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-01-23 15:00:00", call_time: "2027-01-23 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 210, title: "Juve Stabia vs Carrarese", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-02-06 15:00:00", call_time: "2027-02-06 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 211, title: "Juve Stabia vs Empoli", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-02-20 15:00:00", call_time: "2027-02-20 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 212, title: "Juve Stabia vs Modena", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-02-27 15:00:00", call_time: "2027-02-27 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 213, title: "Juve Stabia vs Palermo", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-03-13 15:00:00", call_time: "2027-03-13 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 214, title: "Juve Stabia vs Virtus Entella", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-04-03 15:00:00", call_time: "2027-04-03 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 215, title: "Juve Stabia vs Avellino", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-04-17 15:00:00", call_time: "2027-04-17 11:00:00", notes: "Serie B – Derby campano allo Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 216, title: "Juve Stabia vs Vicenza", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-05-01 15:00:00", call_time: "2027-05-01 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 217, title: "Juve Stabia vs Ascoli", venue: "Stadio Romeo Menti", category: "CALCIO", event_start: "2027-05-14 15:00:00", call_time: "2027-05-14 11:00:00", notes: "Serie B – Stadio Romeo Menti", status: "Da confermare", earnings: 0.0, conflict: false },
+    {"id": 201, "title": "Juve Stabia vs Südtirol", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-10-18 15:00:00", "call_time": "2026-10-18 11:00:00", "notes": "Serie B – Stadio Romeo Menti, Castellammare di Stabia", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 202, "title": "Juve Stabia vs Verona", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-10-28 20:00:00", "call_time": "2026-10-28 16:00:00", "notes": "Serie B – Turno infrasettimanale Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 203, "title": "Juve Stabia vs Arezzo", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-11-07 15:00:00", "call_time": "2026-11-07 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 204, "title": "Juve Stabia vs Catanzaro", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-11-24 19:00:00", "call_time": "2026-11-24 15:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 205, "title": "Juve Stabia vs Benevento", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-12-05 19:30:00", "call_time": "2026-12-05 15:30:00", "notes": "Serie B – Derby campano Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 206, "title": "Juve Stabia vs Padova", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-12-12 15:00:00", "call_time": "2026-12-12 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 207, "title": "Juve Stabia vs Mantova", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2026-12-19 15:00:00", "call_time": "2026-12-19 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 208, "title": "Juve Stabia vs Sampdoria", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-01-09 15:00:00", "call_time": "2027-01-09 11:00:00", "notes": "Serie B – Big match allo Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 209, "title": "Juve Stabia vs Cremonese", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-01-23 15:00:00", "call_time": "2027-01-23 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 210, "title": "Juve Stabia vs Carrarese", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-02-06 15:00:00", "call_time": "2027-02-06 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 211, "title": "Juve Stabia vs Empoli", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-02-20 15:00:00", "call_time": "2027-02-20 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 212, "title": "Juve Stabia vs Modena", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-02-27 15:00:00", "call_time": "2027-02-27 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 213, "title": "Juve Stabia vs Palermo", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-03-13 15:00:00", "call_time": "2027-03-13 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 214, "title": "Juve Stabia vs Virtus Entella", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-04-03 15:00:00", "call_time": "2027-04-03 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 215, "title": "Juve Stabia vs Avellino", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-04-17 15:00:00", "call_time": "2027-04-17 11:00:00", "notes": "Serie B – Derby campano allo Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 216, "title": "Juve Stabia vs Vicenza", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-05-01 15:00:00", "call_time": "2027-05-01 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 217, "title": "Juve Stabia vs Ascoli", "venue": "Stadio Romeo Menti", "category": "CALCIO", "event_start": "2027-05-14 15:00:00", "call_time": "2027-05-14 11:00:00", "notes": "Serie B – Stadio Romeo Menti", "status": "Da confermare", "earnings": 0.0, "conflict": false},
 
     // Casertana FC (Stadio Alberto Pinto) — 14 Partite
-    { id: 301, title: "Casertana vs Bari", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-10-23 20:30:00", call_time: "2026-10-23 16:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto, Caserta", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 302, title: "Casertana vs Casarano", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-07 14:30:00", call_time: "2026-11-07 10:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 303, title: "Casertana vs Salernitana", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-11-20 20:30:00", call_time: "2026-11-20 16:30:00", notes: "Serie C Girone C – Derby campano Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 304, title: "Casertana vs Potenza", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-05 17:30:00", call_time: "2026-12-05 13:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 305, title: "Casertana vs Crotone", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2026-12-19 17:30:00", call_time: "2026-12-19 13:30:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 306, title: "Casertana vs Savoia", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-01-10 15:00:00", call_time: "2027-01-10 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 307, title: "Casertana vs Inter U23", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-01-24 15:00:00", call_time: "2027-01-24 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 308, title: "Casertana vs Cerignola", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-02-07 15:00:00", call_time: "2027-02-07 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 309, title: "Casertana vs Cavese", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-02-14 15:00:00", call_time: "2027-02-14 11:00:00", notes: "Serie C Girone C – Derby campano Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 310, title: "Casertana vs Sorrento", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-02-28 15:00:00", call_time: "2027-02-28 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 311, title: "Casertana vs Giugliano", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-03-07 15:00:00", call_time: "2027-03-07 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 312, title: "Casertana vs Cosenza", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-03-21 15:00:00", call_time: "2027-03-21 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 313, title: "Casertana vs Foggia", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-04-04 15:00:00", call_time: "2027-04-04 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 314, title: "Casertana vs Picerno", venue: "Stadio Alberto Pinto", category: "CALCIO", event_start: "2027-04-18 15:00:00", call_time: "2027-04-18 11:00:00", notes: "Serie C Girone C – Stadio Alberto Pinto", status: "Da confermare", earnings: 0.0, conflict: false },
+    {"id": 301, "title": "Casertana vs Bari", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-10-23 20:30:00", "call_time": "2026-10-23 16:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto, Caserta", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 302, "title": "Casertana vs Casarano", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-11-07 14:30:00", "call_time": "2026-11-07 10:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 303, "title": "Casertana vs Salernitana", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-11-20 20:30:00", "call_time": "2026-11-20 16:30:00", "notes": "Serie C Girone C – Derby campano Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 304, "title": "Casertana vs Potenza", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-12-05 17:30:00", "call_time": "2026-12-05 13:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 305, "title": "Casertana vs Crotone", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2026-12-19 17:30:00", "call_time": "2026-12-19 13:30:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 306, "title": "Casertana vs Savoia", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-01-10 15:00:00", "call_time": "2027-01-10 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 307, "title": "Casertana vs Inter U23", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-01-24 15:00:00", "call_time": "2027-01-24 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 308, "title": "Casertana vs Cerignola", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-02-07 15:00:00", "call_time": "2027-02-07 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 309, "title": "Casertana vs Cavese", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-02-14 15:00:00", "call_time": "2027-02-14 11:00:00", "notes": "Serie C Girone C – Derby campano Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 310, "title": "Casertana vs Sorrento", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-02-28 15:00:00", "call_time": "2027-02-28 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 311, "title": "Casertana vs Giugliano", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-03-07 15:00:00", "call_time": "2027-03-07 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 312, "title": "Casertana vs Cosenza", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-03-21 15:00:00", "call_time": "2027-03-21 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 313, "title": "Casertana vs Foggia", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-04-04 15:00:00", "call_time": "2027-04-04 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 314, "title": "Casertana vs Picerno", "venue": "Stadio Alberto Pinto", "category": "CALCIO", "event_start": "2027-04-18 15:00:00", "call_time": "2027-04-18 11:00:00", "notes": "Serie C Girone C – Stadio Alberto Pinto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
 
-    // Mostra d'Oltremare (mostradoltremare.it) — 36 Eventi
-    { id: 401, title: "Concorso Comune di Bacoli – Prove scritte", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 09:30:00", call_time: "2026-10-16 08:30:00", notes: "Padiglioni Mostra d'Oltremare – Concorso pubblico", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 402, title: "LTS EXPO NAPOLI 2026 – 2^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 10:00:00", call_time: "2026-10-16 08:30:00", notes: "Esposizione fieristica presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 403, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-16 21:00:00", call_time: "2026-10-16 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 404, title: "TUTTO SPOSI 2026 – 37^ edizione – primo weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-17 10:30:00", call_time: "2026-10-17 08:30:00", notes: "Fiera del Wedding e Arredamento – Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 405, title: "QUALCOSA E' ANDATO STORTO!", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-22 21:00:00", call_time: "2026-10-22 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 406, title: "PHARMEXPO 2026 – 18^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-23 10:00:00", call_time: "2026-10-23 08:30:00", notes: "Salone dell'industria farmaceutica del Mediterraneo", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 407, title: "TUTTO SPOSI 2026 – 37^ edizione – 2° weekend", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-24 10:30:00", call_time: "2026-10-24 08:30:00", notes: "Fiera del Wedding e Arredamento – Secondo weekend", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 408, title: "ESAME ABILITAZIONE PROFESSIONE CONSULENTI DEL LAVORO 2026", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-27 08:00:00", call_time: "2026-10-27 08:30:00", notes: "Padiglioni Mostra d'Oltremare – Esame di Stato", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 409, title: "Concerto di Carmelo Zappulla", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-10-31 21:00:00", call_time: "2026-10-31 08:30:00", notes: "Teatro Mediterraneo – Concerto live", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 410, title: "ORIENTASUD 2026 – 27^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-04 08:00:00", call_time: "2026-11-04 08:30:00", notes: "Salone dell'orientamento universitario e professionale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 411, title: "CREATTIVA 2026 – 15^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-05 10:00:00", call_time: "2026-11-05 08:30:00", notes: "Fiera delle arti manuali e bricolage", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 412, title: "BUONASERA A TUTTI", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-06 21:00:00", call_time: "2026-11-06 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 413, title: "AESTETICA 2026 – 29^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-07 10:00:00", call_time: "2026-11-07 08:30:00", notes: "Fiera dell'estetica, salute e benessere", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 414, title: "Non Aprite Quel Teatro", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-12 21:00:00", call_time: "2026-11-12 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 415, title: "Erry Mariano in Concerto", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-14 21:00:00", call_time: "2026-11-14 08:30:00", notes: "Teatro Mediterraneo – Concerto live", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 416, title: "GUSTUS 2026 – 12^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-15 10:00:00", call_time: "2026-11-15 08:30:00", notes: "Expo dei sapori mediterranei e agroalimentare professionale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 417, title: "PADELNESS e SPORT 2026 – 3^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-20 10:00:00", call_time: "2026-11-20 08:30:00", notes: "Salone dello sport e del padel alla Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 418, title: "SALONE DELLO STUDENTE 2026", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-25 09:00:00", call_time: "2026-11-25 08:30:00", notes: "Manifestazione di orientamento accademico", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 419, title: "ARKEDA 2026 – 13^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-27 09:30:00", call_time: "2026-11-27 08:30:00", notes: "Salone dell'architettura, edilizia e design", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 420, title: "FIERA DEL BARATTO E DELL'USATO 2026 – edizione autunnale", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-11-28 09:30:00", call_time: "2026-11-28 08:30:00", notes: "Fiera del riuso, vintage e antiquariato", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 421, title: "FINCHE' GIUDICE NON CI SEPARI", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-03 21:00:00", call_time: "2026-12-03 08:30:00", notes: "Teatro Mediterraneo – Commedia teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 422, title: "MEMORIALE MICHELE AMOROSO VI edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-07 20:00:00", call_time: "2026-12-07 08:30:00", notes: "Evento commemorativo presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 423, title: "MASSIMILIANO GALLO IN LETTERA AD EDUARDO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-15 21:00:00", call_time: "2026-12-15 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 424, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-18 21:00:00", call_time: "2026-12-18 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 425, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2026-12-26 21:00:00", call_time: "2026-12-26 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale di Santo Stefano", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 426, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-08 21:00:00", call_time: "2027-01-08 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 427, title: "CAFE' CHANTANT – MY WORLD", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-15 21:00:00", call_time: "2027-01-15 08:30:00", notes: "Teatro Mediterraneo – Spettacolo serale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 428, title: "PER DISGRAZIA RICEVUTA", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-22 21:00:00", call_time: "2027-01-22 08:30:00", notes: "Teatro Mediterraneo – Spettacolo teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 429, title: "MEET ITALIAN BRANDS 2027", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-01-25 09:00:00", call_time: "2027-01-25 08:30:00", notes: "Salone internazionale B2B moda e abbigliamento", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 430, title: "FINCHE' GIUDICE NON CI SEPARI", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-03-05 21:00:00", call_time: "2027-03-05 08:30:00", notes: "Teatro Mediterraneo – Commedia teatrale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 431, title: "Premio Parthenope 2027 – 3^ edizione", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-03-13 00:00:00", call_time: "2027-03-13 08:30:00", notes: "Manifestazione presso Mostra d'Oltremare", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 432, title: "MASANIELLO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-03-20 21:00:00", call_time: "2027-03-20 08:30:00", notes: "Teatro Mediterraneo – Spettacolo musicale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 433, title: "MASANIELLO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-04-01 21:00:00", call_time: "2027-04-01 08:30:00", notes: "Teatro Mediterraneo – Spettacolo musicale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 434, title: "MASANIELLO", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-04-08 21:00:00", call_time: "2027-04-08 08:30:00", notes: "Teatro Mediterraneo – Spettacolo musicale", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 435, title: "GREEN MED EXPO & SYMPOSIUM 2027", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-05-12 09:00:00", call_time: "2027-05-12 08:30:00", notes: "Stati Generali dell'Ambiente e Green Economy", status: "Da confermare", earnings: 0.0, conflict: false },
-    { id: 436, title: "65° CONGRESSO SICM", venue: "Mostra d'Oltremare", category: "FIERA", event_start: "2027-10-14 13:00:00", call_time: "2027-10-14 08:30:00", notes: "65° Congresso Nazionale Società Italiana Chirurgia della Mano", status: "Da confermare", earnings: 0.0, conflict: false }
+    // Mostra d'Oltremare (mostradoltremare.it) — 53 Eventi
+    {"id": 401, "title": "Concorso Comune di Bacoli – Prove scritte", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-16 09:30:00", "call_time": "2026-10-16 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso pubblico", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 402, "title": "LTS EXPO NAPOLI 2026 – 2^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-16 10:00:00", "call_time": "2026-10-16 08:30:00", "notes": "Esposizione fieristica presso Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 403, "title": "CAFE' CHANTANT – MY WORLD", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-16 21:00:00", "call_time": "2026-10-16 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo serale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 404, "title": "TUTTO SPOSI 2026 – 37^ edizione – primo weekend", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-17 10:30:00", "call_time": "2026-10-17 08:30:00", "notes": "Fiera del Wedding e Arredamento – Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 405, "title": "QUALCOSA E' ANDATO STORTO!", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-24 21:00:00", "call_time": "2026-10-24 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo teatrale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 406, "title": "PHARMEXPO 2026 – 18^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-23 10:00:00", "call_time": "2026-10-23 08:30:00", "notes": "Salone dell'industria farmaceutica del Mediterraneo", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 407, "title": "TUTTO SPOSI 2026 – 37^ edizione – 2° weekend", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-24 10:30:00", "call_time": "2026-10-24 08:30:00", "notes": "Fiera del Wedding e Arredamento – Secondo weekend", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 408, "title": "ESAME ABILITAZIONE PROFESSIONE CONSULENTI DEL LAVORO 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-27 08:00:00", "call_time": "2026-10-27 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Esame di Stato", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 409, "title": "Concerto di Carmelo Zappulla", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-31 20:30:00", "call_time": "2026-10-31 08:30:00", "notes": "Teatro Mediterraneo – Concerto live", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 410, "title": "ORIENTASUD 2026 – 27^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-04 08:00:00", "call_time": "2026-11-04 08:30:00", "notes": "Salone dell'orientamento universitario e professionale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 411, "title": "CREATTIVA 2026 – 15^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-05 10:00:00", "call_time": "2026-11-05 08:30:00", "notes": "Fiera delle arti manuali e bricolage", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 412, "title": "BUONASERA A TUTTI", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-06 21:00:00", "call_time": "2026-11-06 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo serale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 413, "title": "AESTETICA 2026 – 29^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-07 10:00:00", "call_time": "2026-11-07 08:30:00", "notes": "Fiera dell'estetica, salute e benessere", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 414, "title": "Non Aprite Quel Teatro", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-12 21:00:00", "call_time": "2026-11-12 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo teatrale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 415, "title": "Erry Mariano in Concerto", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-14 21:00:00", "call_time": "2026-11-14 08:30:00", "notes": "Teatro Mediterraneo – Concerto live", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 416, "title": "GUSTUS 2026 – 12^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-15 10:00:00", "call_time": "2026-11-15 08:30:00", "notes": "Expo dei sapori mediterranei e agroalimentare professionale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 417, "title": "PADELNESS e SPORT 2026 – 3^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-20 10:00:00", "call_time": "2026-11-20 08:30:00", "notes": "Salone dello sport e del padel alla Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 418, "title": "SALONE DELLO STUDENTE 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-25 09:00:00", "call_time": "2026-11-25 08:30:00", "notes": "Manifestazione di orientamento accademico", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 419, "title": "ARKEDA 2026 – 13^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-27 09:30:00", "call_time": "2026-11-27 08:30:00", "notes": "Salone dell'architettura, edilizia e design", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 420, "title": "FIERA DEL BARATTO E DELL'USATO 2026 – edizione autunnale", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-28 09:30:00", "call_time": "2026-11-28 08:30:00", "notes": "Fiera del riuso, vintage e antiquariato", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 421, "title": "FINCHE' GIUDICE NON CI SEPARI", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-04 21:00:00", "call_time": "2026-12-04 08:30:00", "notes": "Teatro Mediterraneo – Commedia teatrale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 422, "title": "MEMORIALE MICHELE AMOROSO VI edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-07 20:00:00", "call_time": "2026-12-07 08:30:00", "notes": "Evento commemorativo presso Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 423, "title": "MASSIMILIANO GALLO IN LETTERA AD EDUARDO", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-15 21:00:00", "call_time": "2026-12-15 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo teatrale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 424, "title": "CAFE' CHANTANT – MY WORLD", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-18 21:00:00", "call_time": "2026-12-18 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo serale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 425, "title": "CAFE' CHANTANT – MY WORLD", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-26 21:00:00", "call_time": "2026-12-26 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo serale di Santo Stefano", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 426, "title": "CAFE' CHANTANT – MY WORLD", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-01-08 21:00:00", "call_time": "2027-01-08 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo serale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 427, "title": "CAFE' CHANTANT – MY WORLD", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-01-15 21:00:00", "call_time": "2027-01-15 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo serale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 428, "title": "PER DISGRAZIA RICEVUTA", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-01-22 21:00:00", "call_time": "2027-01-22 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo teatrale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 429, "title": "MEET ITALIAN BRANDS 2027", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-01-25 09:00:00", "call_time": "2027-01-25 08:30:00", "notes": "Salone internazionale B2B moda e abbigliamento", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 430, "title": "FINCHE' GIUDICE NON CI SEPARI", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-03-05 21:00:00", "call_time": "2027-03-05 08:30:00", "notes": "Teatro Mediterraneo – Commedia teatrale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 431, "title": "Premio Parthenope 2027 – 3^ edizione", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-03-13 00:00:00", "call_time": "2027-03-13 08:30:00", "notes": "Manifestazione presso Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 432, "title": "MASANIELLO", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-03-20 21:00:00", "call_time": "2027-03-20 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo musicale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 433, "title": "MASANIELLO", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-04-01 21:00:00", "call_time": "2027-04-01 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo musicale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 434, "title": "MASANIELLO", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-04-08 21:00:00", "call_time": "2027-04-08 08:30:00", "notes": "Teatro Mediterraneo – Spettacolo musicale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 435, "title": "GREEN MED EXPO & SYMPOSIUM 2027", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-05-12 09:00:00", "call_time": "2027-05-12 08:30:00", "notes": "Stati Generali dell'Ambiente e Green Economy", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 436, "title": "65° CONGRESSO SICM", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2027-10-14 13:00:00", "call_time": "2027-10-14 08:30:00", "notes": "65° Congresso Nazionale Società Italiana Chirurgia della Mano", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 437, "title": "Gonzalo Plays Pino", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-28 21:00:00", "call_time": "2026-10-28 08:30:00", "notes": "Concerto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 438, "title": "CONCORSO UNIVERSITA' LINK CAMPUS", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-10-30 13:00:00", "call_time": "2026-10-30 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 439, "title": "Congresso ADO 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-05 08:00:00", "call_time": "2026-11-05 08:30:00", "notes": "Congresso (fino al 06/11)", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 440, "title": "CONCORSO ABILITAZIONE TFA ANNO ACCADEMICO 2026-2027", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-09 08:00:00", "call_time": "2026-11-09 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 441, "title": "Billy Cobham Time Machine", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-10 20:30:00", "call_time": "2026-11-10 08:30:00", "notes": "Concerto", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 442, "title": "CONCORSO FONDAZIONE PASCALE", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-11 11:00:00", "call_time": "2026-11-11 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 443, "title": "CONCORSO MIC 1800", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-13 09:30:00", "call_time": "2026-11-13 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 444, "title": "CONCORSO MIC 1800", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-16 09:30:00", "call_time": "2026-11-16 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso (fino al 19/11)", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 445, "title": "LA SCUOLA ADOTTA UN MONUMENTO 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-18 10:00:00", "call_time": "2026-11-18 08:30:00", "notes": "Manifestazione presso Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 446, "title": "CONCORSO MIC 1800", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-20 09:30:00", "call_time": "2026-11-20 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 447, "title": "CONCORSO ARUS", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-23 10:30:00", "call_time": "2026-11-23 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 448, "title": "CONCORSO MINISTERO GIUSTIZIA", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-24 12:30:00", "call_time": "2026-11-24 08:30:00", "notes": "Padiglioni Mostra d'Oltremare – Concorso", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 449, "title": "GRAND PRIX DE LA DANSE 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-11-28 16:00:00", "call_time": "2026-11-28 08:30:00", "notes": "Manifestazione di danza (fino al 29/11)", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 450, "title": "ARTISTI IN DIVISA Napoli Edition", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-02 20:00:00", "call_time": "2026-12-02 08:30:00", "notes": "Spettacolo serale", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 451, "title": "TATTOO LAB PROJECT", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-04 15:00:00", "call_time": "2026-12-04 08:30:00", "notes": "Fiera del tatuaggio (fino al 06/12)", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 452, "title": "PIZZA DOC AWARDS 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-09 00:00:00", "call_time": "2026-12-09 08:30:00", "notes": "Premiazione presso Mostra d'Oltremare", "status": "Da confermare", "earnings": 0.0, "conflict": false},
+    {"id": 453, "title": "VESUVIO TATTOO FESTIVAL 2026", "venue": "Mostra d'Oltremare", "category": "FIERA", "event_start": "2026-12-11 11:00:00", "call_time": "2026-12-11 08:30:00", "notes": "Fiera del tatuaggio (fino al 13/12)", "status": "Da confermare", "earnings": 0.0, "conflict": false}
   ];
 }
 
@@ -449,27 +462,56 @@ function _statusPriority(st) {
   return 1;
 }
 
+const LEGACY_CANONICAL_ALIASES = {
+  'napoli vs club bruges__2026-12-08': 'napoli vs club brugge__2026-12-08',
+  'qualcosa e andato storto__2026-10-22': 'qualcosa e andato storto__2026-10-24',
+  'finche giudice non ci separi__2026-12-03': 'finche giudice non ci separi__2026-12-04'
+};
+
+const OBSOLETE_PHANTOM_KEYS = new Set([
+  'napoli vs bologna__2026-11-01',
+  'napoli vs feyenoord__2026-11-04',
+  'napoli vs empoli__2026-11-29',
+  'napoli vs verona__2027-01-17',
+  'napoli vs como__2027-02-28'
+]);
+
+function isManagedVenue(ev) {
+  const venue = (ev?.venue || '').toLowerCase();
+  return (
+    venue.includes('maradona') ||
+    venue.includes('menti') ||
+    venue.includes('pinto') ||
+    venue.includes('mostra')
+  );
+}
+
+function isUserOwnedEvent(ev) {
+  return (
+    Number(ev?.id || 0) >= 1700000000000 ||
+    (ev?.notes || '').includes('J.A.R.V.I.S.') ||
+    Number(ev?.earnings || 0) > 0
+  );
+}
+
 /**
  * Ripara, bonifica e deduplica il catalogo locale dello smartphone:
- * - Ripristina la data/ora ufficiale esatta per ogni evento (es. Juve Stabia vs Arezzo -> 7 Nov 2026,
- *   Napoli vs Lazio -> 8 Nov 2026, Napoli vs Lecce -> 5 Dic 2026) corrotta dal vecchio bug di ID shift.
- * - Preserva al 100% lo stato ("Lavoro io" / "Riposo") e i guadagni (€) registrati dall'utente.
- * - Elimina i doppioni (es. "ÈEmpoli" vs "Empoli", "–" vs spazio) unendo stato e compensi.
- * - Azzera i falsi avvisi (updated_flag = false) generati dallo slittamento ID.
+ * - Abbina SEMPRE per (titolo normalizzato + data) evitando collisioni su match ripetuti (es. Napoli vs Fiorentina).
+ * - Rimuove eventuali partite fantasma/obsolete (es. Napoli vs Empoli 29 Nov) dal vecchio seed locale.
+ * - Ripristina la data/ora ufficiale esatta per gli eventi canonici e preserva stato ("Lavoro io"/"Riposo") e guadagni (€).
+ * - Azzera i falsi avvisi (updated_flag = false).
  */
-function repairAndSanitizeLocalEvents(rawEvents) {
+function repairAndSanitizeLocalEvents(rawEvents, { backfillSeeds = true } = {}) {
   const canonicalSeeds = getDefaultSeedEvents();
-  const singleCanonicalMap = new Map();
-  const multiCanonicalMap = new Map(); // key -> array of seed objects
+  const canonicalByGroupKey = new Map();
+  const canonicalByNormKey = new Map();
 
   canonicalSeeds.forEach(seed => {
     const k = normalizeEventKey(seed.title);
-    if (MULTI_DATE_SHOW_KEYS.has(k)) {
-      if (!multiCanonicalMap.has(k)) multiCanonicalMap.set(k, []);
-      multiCanonicalMap.get(k).push(seed);
-    } else {
-      singleCanonicalMap.set(k, seed);
-    }
+    const gk = `${k}__${seed.event_start.slice(0, 10)}`;
+    canonicalByGroupKey.set(gk, seed);
+    if (!canonicalByNormKey.has(k)) canonicalByNormKey.set(k, []);
+    canonicalByNormKey.get(k).push(seed);
   });
 
   const mergedByGroupKey = new Map();
@@ -481,24 +523,27 @@ function repairAndSanitizeLocalEvents(rawEvents) {
 
     if (BOGUS_VOICE_TITLES.has(normKey)) return;
 
-    let groupKey = normKey;
-    let canonicalTarget = null;
+    const evDate = (ev.event_start || '').slice(0, 10);
+    const rawGroupKey = `${normKey}__${evDate}`;
+    const userOwned = isUserOwnedEvent(ev);
 
-    if (singleCanonicalMap.has(normKey)) {
-      canonicalTarget = singleCanonicalMap.get(normKey);
-      groupKey = normKey;
-    } else if (multiCanonicalMap.has(normKey)) {
-      const candidates = multiCanonicalMap.get(normKey);
-      const evDate = (ev.event_start || '').slice(0, 10);
-      canonicalTarget = candidates.find(c => c.event_start.slice(0, 10) === evDate) || null;
-      if (!canonicalTarget) {
-        // La data locale di questo spettacolo multi-data era stata corrotta dallo shift ID:
-        // assegna la prima data canonica non ancora occupata per questo spettacolo
+    if (OBSOLETE_PHANTOM_KEYS.has(rawGroupKey) && !userOwned) {
+      return;
+    }
+
+    const aliasedKey = LEGACY_CANONICAL_ALIASES[rawGroupKey] || rawGroupKey;
+    let canonicalTarget = canonicalByGroupKey.get(aliasedKey) || null;
+    let groupKey = aliasedKey;
+
+    if (!canonicalTarget && canonicalByNormKey.has(normKey)) {
+      const candidates = canonicalByNormKey.get(normKey);
+      if (candidates.length === 1) {
+        canonicalTarget = candidates[0];
+        groupKey = `${normKey}__${canonicalTarget.event_start.slice(0, 10)}`;
+      } else if (MULTI_DATE_SHOW_KEYS.has(normKey) && !userOwned) {
         canonicalTarget = candidates.find(c => !mergedByGroupKey.has(`${normKey}__${c.event_start.slice(0, 10)}`)) || candidates[0];
+        groupKey = `${normKey}__${canonicalTarget.event_start.slice(0, 10)}`;
       }
-      groupKey = `${normKey}__${canonicalTarget.event_start.slice(0, 10)}`;
-    } else {
-      groupKey = `${normKey}__${(ev.event_start || '').slice(0, 10)}`;
     }
 
     const cleanEv = {
@@ -531,16 +576,16 @@ function repairAndSanitizeLocalEvents(rawEvents) {
     }
   });
 
-  // Assicura che tutti i 91 eventi ufficiali della stagione 2026/2027 siano presenti
-  canonicalSeeds.forEach(seed => {
-    const normKey = normalizeEventKey(seed.title);
-    const groupKey = MULTI_DATE_SHOW_KEYS.has(normKey)
-      ? `${normKey}__${seed.event_start.slice(0, 10)}`
-      : normKey;
-    if (!mergedByGroupKey.has(groupKey)) {
-      mergedByGroupKey.set(groupKey, { ...seed, updated_flag: false });
-    }
-  });
+  // Assicura che tutti gli eventi ufficiali della stagione 2026/2027 siano presenti (distinti per titolo+data)
+  if (backfillSeeds) {
+    canonicalSeeds.forEach(seed => {
+      const normKey = normalizeEventKey(seed.title);
+      const groupKey = `${normKey}__${seed.event_start.slice(0, 10)}`;
+      if (!mergedByGroupKey.has(groupKey)) {
+        mergedByGroupKey.set(groupKey, { ...seed, updated_flag: false });
+      }
+    });
+  }
 
   const result = Array.from(mergedByGroupKey.values());
   result.sort((a, b) => (a.event_start || '').localeCompare(b.event_start || ''));
@@ -610,52 +655,75 @@ function computeLocalAlertsData(events) {
   };
 }
 
-// Sincronizzazione intelligente col backend: abbina SEMPRE per titolo normalizzato (MAI per ID cieco!)
+// Sincronizzazione intelligente col backend: abbina SEMPRE per (titolo normalizzato + data)
 async function syncSoftWithBackend() {
   try {
     const res = await apiGet('/api/events');
     if (!res || !res.events || !res.events.length) return;
 
-    const canonicalSeeds = getDefaultSeedEvents();
-    const canonicalByKey = new Map();
-    canonicalSeeds.forEach(s => {
-      const k = normalizeEventKey(s.title);
-      if (!MULTI_DATE_SHOW_KEYS.has(k)) canonicalByKey.set(k, s);
-    });
-
+    const remoteGroupKeys = new Set();
     let hasChanges = false;
+
+    const findMatchingLocalEvent = (remoteKey, remoteDate, remoteVenue) => {
+      // 1. Corrispondenza esatta titolo normalizzato + data
+      const exact = STATE.events.find(e =>
+        normalizeEventKey(e.title) === remoteKey &&
+        (e.event_start || '').slice(0, 10) === remoteDate
+      );
+      if (exact) return exact;
+
+      // 2. Fallback per spostamento data (es. anticipo/posticipo <= 4 giorni) su eventi con titolo univoco lato server e locale
+      if (remoteDate) {
+        const sameTitleRemoteCount = res.events.filter(r => r && r.title && normalizeEventKey(r.title) === remoteKey).length;
+        const sameTitleLocal = STATE.events.filter(e => normalizeEventKey(e.title) === remoteKey);
+        if (sameTitleRemoteCount === 1 && sameTitleLocal.length === 1) {
+          const candidate = sameTitleLocal[0];
+          const localDate = (candidate.event_start || '').slice(0, 10);
+          const sameVenue = !remoteVenue || !candidate.venue || candidate.venue.toLowerCase() === remoteVenue.toLowerCase();
+          if (localDate && sameVenue) {
+            const diffDays = Math.abs((new Date(remoteDate) - new Date(localDate)) / 86400000);
+            if (diffDays <= 4) return candidate;
+          }
+        }
+      }
+      return null;
+    };
+
     res.events.forEach(remoteEv => {
       if (!remoteEv || !remoteEv.title) return;
       const remoteKey = normalizeEventKey(remoteEv.title);
       if (BOGUS_VOICE_TITLES.has(remoteKey)) return;
 
       const remoteDate = (remoteEv.event_start || '').slice(0, 10);
-      const exists = STATE.events.find(e => {
-        const localKey = normalizeEventKey(e.title);
-        if (localKey !== remoteKey) return false;
-        if (MULTI_DATE_SHOW_KEYS.has(remoteKey)) {
-          return (e.event_start || '').slice(0, 10) === remoteDate;
-        }
-        return true;
-      });
+      remoteGroupKeys.add(`${remoteKey}__${remoteDate}`);
+
+      const exists = findMatchingLocalEvent(remoteKey, remoteDate, remoteEv.venue);
 
       if (exists) {
         if (exists.id !== remoteEv.id) {
           exists.id = remoteEv.id;
           hasChanges = true;
         }
-        // Se l'evento fa parte del calendario certificato 2026/2027, mantiene la data canonica
-        if (canonicalByKey.has(remoteKey)) {
-          const canon = canonicalByKey.get(remoteKey);
-          if (exists.event_start !== canon.event_start) {
-            exists.event_start = canon.event_start;
-            exists.call_time = canon.call_time;
-            exists.updated_flag = false;
-            hasChanges = true;
-          }
-        } else if (remoteEv.event_start && exists.event_start !== remoteEv.event_start) {
+        const cleanedRemoteTitle = cleanDisplayTitle(remoteEv.title);
+        if (cleanedRemoteTitle && exists.title !== cleanedRemoteTitle) {
+          exists.title = cleanedRemoteTitle;
+          hasChanges = true;
+        }
+        if (remoteEv.event_start && exists.event_start !== remoteEv.event_start) {
           exists.event_start = remoteEv.event_start;
           exists.call_time = remoteEv.call_time || remoteEv.event_start;
+          exists.updated_flag = false;
+          hasChanges = true;
+        } else if (remoteEv.call_time && exists.call_time !== remoteEv.call_time) {
+          exists.call_time = remoteEv.call_time;
+          hasChanges = true;
+        }
+        if (remoteEv.venue && exists.venue !== remoteEv.venue) {
+          exists.venue = remoteEv.venue;
+          hasChanges = true;
+        }
+        if (remoteEv.notes && exists.notes !== remoteEv.notes && !isUserOwnedEvent(exists)) {
+          exists.notes = remoteEv.notes;
           hasChanges = true;
         }
       } else {
@@ -668,8 +736,19 @@ async function syncSoftWithBackend() {
       }
     });
 
+    // Rimuove dal database locale gli eventi gestiti non più presenti sul server (es. partite inesistenti rimosse dal calendario)
+    const beforeLen = STATE.events.length;
+    STATE.events = STATE.events.filter(ev => {
+      if (!isManagedVenue(ev) || isUserOwnedEvent(ev)) return true;
+      const keyDate = `${normalizeEventKey(ev.title)}__${(ev.event_start || '').slice(0, 10)}`;
+      return remoteGroupKeys.has(keyDate);
+    });
+    if (STATE.events.length !== beforeLen) {
+      hasChanges = true;
+    }
+
     if (hasChanges) {
-      STATE.events = repairAndSanitizeLocalEvents(STATE.events);
+      STATE.events = repairAndSanitizeLocalEvents(STATE.events, { backfillSeeds: false });
       recomputeLocalConflicts(STATE.events);
       saveLocalEvents(STATE.events);
       renderHudCalendar();
@@ -721,8 +800,8 @@ async function loadEvents() {
     renderEarningsTab();
     renderLocalAlerts();
 
-    // Sincronizzazione discreta in background con nuove partite (senza toccare gli stati/guadagni dell'utente)
-    syncSoftWithBackend();
+    // Sincronizzazione discreta col backend (riallinea date/rimuove partite fantasma preservando stati/guadagni)
+    await syncSoftWithBackend();
   } catch (err) {
     console.error('Errore caricamento eventi:', err);
     if (!STATE.events || STATE.events.length === 0) {
@@ -2920,7 +2999,14 @@ async function processVoiceCommand(cmd) {
             }
           } else if (res.action === 'status_updated') {
             const evNormKey = normalizeEventKey(res.event.title || '');
+            const evDate = (res.event.event_start || '').slice(0, 10);
             let target = STATE.events.find(e => e.id === res.event.id && normalizeEventKey(e.title) === evNormKey);
+            if (!target && evNormKey && evDate) {
+              target = STATE.events.find(e =>
+                normalizeEventKey(e.title) === evNormKey &&
+                (e.event_start || '').slice(0, 10) === evDate
+              );
+            }
             if (!target && evNormKey) {
               target = STATE.events.find(e => normalizeEventKey(e.title) === evNormKey);
             }
@@ -3209,7 +3295,7 @@ function queryTeam(keyword, teamName) {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/static/sw.js?v=2.9.0', { scope: '/' })
+      navigator.serviceWorker.register('/static/sw.js?v=2.10.0', { scope: '/' })
         .then(reg => {
           console.log('SW registrato:', reg.scope);
           // Verifica immediatamente se c'è una nuova versione sul server
